@@ -1,0 +1,183 @@
+Ginger-এর email thread, Website Info.docx, এবং দেওয়া asset link দেখে website-এর সম্পূর্ণ requirement নিচে সাজিয়ে দিলাম।
+
+Project Overview
+Business name: Two G’s In A Pod | Design & Interiors
+Website type: Interior design ও cabinetry business website
+Existing domain: www.gginapod.com
+Domain provider/previous builder: GoDaddy
+মূল লক্ষ্য:
+Interior design service তুলে ধরা
+Stock ও Custom Cabinetry catalogue দেখানো
+Countertop ও Flooring options দেখানো
+Completed projects প্রদর্শন
+Client যেন consultation/schedule request করতে পারে
+Website Menu / Pages
+
+প্রধান menu-তে থাকবে:
+
+Home
+Stock Cabinetry
+Custom Cabinetry
+Countertops
+Flooring
+Spaces We’ve Created
+Schedule With Us
+About Us
+Contact Us
+Terms and Conditions
+1. Home Page
+
+Home page-এ রাখতে হবে:
+
+Business name: Two G’s In A Pod | Design & Interiors
+Hero/banner section
+Company philosophy বা short introduction
+Stock Cabinetry featured section
+Heading/card clickable হবে
+Stock Cabinetry page বা tiles section-এ নিয়ে যাবে
+Custom Cabinetry featured section
+Heading/card clickable হবে
+Custom Cabinetry page বা tiles section-এ নিয়ে যাবে
+Schedule With Us call-to-action
+Main navigation menu
+2. Stock Cabinetry
+
+এই page/section-এ:
+
+Available cabinet door styles এবং colors tile/card আকারে দেখাতে হবে
+প্রতিটি tile-এ:
+Image
+Door style/color-এর নাম
+কোনো tile select করলে সেই collection-এর:
+Available cabinetry items
+সংশ্লিষ্ট options/images
+দেখাবে
+
+Ginger Stock Cabinetry-এর প্রয়োজনীয় image/assets আলাদা OneDrive folder-এ দিয়েছে।
+
+3. Custom Cabinetry
+
+Page-এর উপরে তিনটি clickable tab/heading থাকবে:
+
+Door Profile
+Paint
+Stain
+
+Tab click করলে নিচের content পরিবর্তন হবে:
+
+Door Profile
+Available door profiles tile আকারে দেখাবে
+প্রতিটি profile-এর image ও name থাকবে
+Paint
+Available paint colors/options tile আকারে দেখাবে
+প্রতিটির image/sample এবং name থাকবে
+Stain
+Available stain options tile আকারে দেখাবে
+প্রতিটির image/sample এবং name থাকবে
+
+এই section-এর image/assets-ও Ginger-এর OneDrive folder-এ দেওয়া আছে।
+
+4. Countertops
+Available countertop slabs tile/grid আকারে দেখাতে হবে
+প্রতিটি slab-এর:
+Image
+Name/label
+প্রয়োজনে short information
+5. Flooring
+Available flooring options tile/grid আকারে দেখাতে হবে
+প্রতিটির:
+Image
+Name/label
+প্রয়োজনে short description
+6. Spaces We’ve Created
+
+এটি completed project portfolio/gallery হবে।
+
+Finished interior projects-এর photos
+Kitchen, bathroom, cabinetry বা অন্যান্য completed space দেখানো যাবে
+ছবিগুলো attractive gallery/grid layout-এ থাকবে
+প্রয়োজন হলে image বড় করে দেখার lightbox রাখা যাবে
+7. Schedule With Us
+
+Client consultation বা meeting request পাঠানোর ব্যবস্থা থাকবে।
+
+সম্ভাব্য form fields:
+
+Name
+Email
+Phone
+Preferred date/time
+Project/service type
+Message/project details
+
+তবে calendar integration, automatic booking বা শুধু request form—কোনটি হবে, সেটি email-এ নির্দিষ্ট করা হয়নি।
+
+8. About Us
+
+Ginger নিজের এবং company-এর bio রাখতে চেয়েছে।
+
+প্রধান content:
+
+Thoughtful Design Begins Before Construction.
+
+এই section-এর মূল বক্তব্য:
+
+ভালো interior design construction শুরুর আগেই পরিকল্পনা করা দরকার।
+তারা contractors, engineers, builders এবং homeowners-এর সঙ্গে blueprint stage থেকে project completion পর্যন্ত কাজ করে।
+Architectural plan review করার সময় তারা দেখে:
+Function
+Flow
+Proportion
+Everyday usability
+Construction স্থায়ী বা ব্যয়বহুল হয়ে যাওয়ার আগেই প্রয়োজনীয় layout ও structural adjustment চিহ্নিত করে।
+তাদের planning-এর মধ্যে থাকে:
+Kitchens
+Bathrooms
+Cabinetry
+Storage
+Appliance placement
+Overall interior flow
+তাদের ভূমিকা blueprint এবং finished interior-এর মধ্যকার gap পূরণ করা।
+ছোট পরিবর্তন—যেমন wall shift, opening revision, কয়েক ইঞ্চি জায়গা বাড়ানো বা cabinet layout উন্নত করা—finished space-এ বড় পার্থক্য তৈরি করতে পারে।
+
+Closing line:
+
+Small changes before construction can make a world of difference after it.
+Where thoughtful planning meets beautiful design.
+
+Professional title:
+
+Interior Planning & Design Specialist
+9. Contact Us
+
+Contact page-এ থাকবে:
+
+General inquiry/submission form
+Phone number
+Business operating hours
+Instagram link
+Business/contact information
+
+সম্ভাব্য form fields:
+
+Name
+Email
+Phone
+Subject
+Message
+10. Terms and Conditions
+আলাদা Terms and Conditions page
+Footer থেকে link করা হবে
+তবে actual legal content এখনো Ginger দেয়নি
+Assets
+
+Ginger একটি OneDrive folder দিয়েছে যেখানে মূলত:
+
+Stock Cabinetry images
+Custom Cabinetry images
+Door profiles
+Paint options
+Stain options
+প্রয়োজনীয় tiles/assets
+
+

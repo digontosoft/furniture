@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Cormorant Garamond", Georgia, serif;
+  --color-cream: #faf7f2;
+  --color-sand: #efe8dc;
+  --color-ink: #2b2723;
+  --color-muted: #7a7169;
+  --color-brand: #5b6b57;
+  --color-brand-dark: #44523f;
+}
+
+html { scroll-behavior: smooth; }
+body { @apply bg-cream text-ink font-sans antialiased; }
+h1, h2, h3 { @apply font-serif; }
+
+.btn { @apply inline-flex items-center justify-center rounded-full bg-brand px-6 py-3 text-sm font-medium text-white transition hover:bg-brand-dark disabled:opacity-50; }
+.btn-outline { @apply inline-flex items-center justify-center rounded-full border border-ink/30 px-6 py-3 text-sm font-medium transition hover:bg-ink hover:text-white; }
+.input { @apply w-full rounded-lg border border-ink/20 bg-white px-4 py-3 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20; }
+.label { @apply mb-1 block text-sm font-medium; }
