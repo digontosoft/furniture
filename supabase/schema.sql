@@ -11,6 +11,7 @@ create table if not exists catalog_items (
   category text,   -- stock_item: Base / Wall / Tall / Vanity ...
   sku text,        -- stock_item
   size text,       -- stock_item, e.g. 30"W x 34.5"H x 24"D
+  style text,      -- stock_collection: Flat Panel / Shaker / Double Shaker / Slim Shaker / Raised Panel
   sort_order int not null default 0,
   published boolean not null default true,
   created_at timestamptz not null default now()
@@ -61,4 +62,4 @@ create policy "admin write media" on storage.objects for all
   with check (bucket_id = 'media' and auth.role() = 'authenticated');
 
 -- If catalog_items already exists, run this instead of re-creating it:
--- alter table catalog_items add column if not exists category text, add column if not exists sku text, add column if not exists size text;
+-- alter table catalog_items add column if not exists category text, add column if not exists sku text, add column if not exists size text, add column if not exists style text;

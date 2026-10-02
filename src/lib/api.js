@@ -8,13 +8,12 @@ export { DUMMY_IMAGES }
 
 export const DEFAULT_SETTINGS = {
   hero: {
-    title: 'Where thoughtful planning meets beautiful design.',
-    subtitle: 'Interior design, cabinetry, countertops and flooring — planned from the blueprint to the finished space.',
+    title: 'Thoughtful interiors. Beautifully considered.',
+    subtitle: 'Creating spaces that are as functional as they are beautiful.',
     image_url: USE_DUMMY ? DUMMY_HERO : '',
   },
-  home: { stock_image: '', custom_image: '' },
   philosophy: {
-    text: 'Good interiors begin before construction. We work alongside contractors, engineers, builders and homeowners to shape function, flow and proportion from the very first plan.',
+    text: 'Merging exceptional design with tailormade cabinetry, we curate spaces from concept to completion, distinguished by precision, craftsmanship, and an unwavering attention to every detail.',
   },
   about: {
     heading: 'Thoughtful Design Begins Before Construction.',
@@ -24,9 +23,22 @@ export const DEFAULT_SETTINGS = {
       'Great interior design starts long before construction begins. We work with contractors, engineers, builders and homeowners from the blueprint stage through project completion.\n\nWhen reviewing architectural plans we look at function, flow, proportion and everyday usability, identifying layout and structural adjustments before construction becomes permanent or costly.\n\nOur planning covers kitchens, bathrooms, cabinetry, storage, appliance placement and overall interior flow. We bridge the gap between the blueprint and the finished interior.\n\nSmall changes — a shifted wall, a revised opening, a few extra inches, a better cabinet layout — can make a big difference in the finished space.',
     closing: 'Small changes before construction can make a world of difference after it.',
   },
-  contact: { phone: '', email: '', address: '', hours: 'Mon–Fri: 9:00 AM – 5:00 PM', instagram: '' },
+  contact: { phone: '702-418-2018', email: '', address: '', hours: 'Monday – Friday 9:00am-5:00pm', instagram: '', linkedin: '' },
   terms: { body: 'Terms and Conditions will be published here soon.' },
+  measurementGuide: { body: 'Our measurement guide will be published here soon. In the meantime, request a consultation and we will measure your space for you.' },
+  shipping: { body: 'Shipment & delivery information will be published here soon.' },
+  faq: { body: 'Frequently asked questions will be published here soon.' },
 }
+
+// Stock Cabinetry door-style groups (client notes). Collections without a matching
+// `style` column value fall back to this name-based lookup, then "Shaker".
+export const STYLE_GROUPS = ['Flat Panel', 'Shaker', 'Double Shaker', 'Slim Shaker', 'Raised Panel']
+const STYLE_BY_NAME = {
+  'Double Smoked': 'Double Shaker', 'Double White': 'Double Shaker',
+  'Slim Oak': 'Slim Shaker', 'Slim Pine': 'Slim Shaker', 'Slim White': 'Slim Shaker',
+  'Classic Brown': 'Raised Panel', 'Classic Cream': 'Raised Panel', 'Traditional White': 'Raised Panel',
+}
+export const styleOf = (collection) => collection.style || STYLE_BY_NAME[collection.name] || 'Shaker'
 
 const cache = new Map()
 
@@ -87,6 +99,19 @@ export function prefetchCatalog() {
   const run = () => ['stock_collection', 'door_profile', 'paint', 'stain'].forEach((sec) =>
     fetchItems(sec).then((d) => { cache.set(`${sec}:`, d); writeLS(`${sec}:`, d) }).catch(() => {}))
   ;(window.requestIdleCallback || ((f) => setTimeout(f, 1500)))(run)
+}
+
+/** Header search: matches catalogue items by name across every section. */
+export async function searchItems(q) {
+  const term = q.trim().toLowerCase()
+  if (!term) return []
+  if (USE_DUMMY) return DUMMY_ITEMS.filter((i) => i.name.toLowerCase().includes(term)).slice(0, 60)
+  const supabase = await getClient()
+  if (!supabase) return []
+  const { data, error } = await supabase.from('catalog_items').select('*')
+    .eq('published', true).ilike('name', `%${term.replace(/[%_,()]/g, ' ')}%`).order('sort_order').limit(60)
+  if (error) throw error
+  return data
 }
 
 export async function submitForm(payload) {

@@ -16,7 +16,7 @@ export default function About() {
             <div className="mt-6 space-y-4 whitespace-pre-line text-muted">{about.body}</div>
             <p className="mt-8 font-serif text-2xl italic">{about.closing}</p>
             <p className="font-serif text-xl text-brand">Where thoughtful planning meets beautiful design.</p>
-            <Link to="/schedule" className="btn mt-8">Schedule With Us</Link>
+            <Link to="/contact" className="btn mt-8">Contact Us</Link>
           </div>
         </div>
       </Section>

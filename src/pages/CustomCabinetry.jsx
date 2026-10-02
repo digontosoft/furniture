@@ -12,7 +12,7 @@ export default function CustomCabinetry() {
   const tab = TABS.some(([k]) => k === params.get('tab')) ? params.get('tab') : 'door_profile'
   return (
     <>
-      <PageHeader title="Custom Cabinetry" subtitle="Build your cabinetry from door profile, paint and stain." />
+      <PageHeader title="Custom Cabinetry" subtitle="Choose every detail, from your door profile to your perfect stain or paint color." />
       <Section>
         <div role="tablist" className="mb-10 flex justify-center gap-2 border-b border-ink/10">
           {TABS.map(([key, label]) => (
@@ -23,7 +23,8 @@ export default function CustomCabinetry() {
             </button>
           ))}
         </div>
-        <ItemsGrid key={tab} section={tab} portrait={tab === 'door_profile'} />
+        {/* door profile images are 4:5 — a matching box shows the full door with no white frame */}
+        <ItemsGrid key={tab} section={tab} fit={tab === 'door_profile' ? 'contain' : 'cover'} aspect={tab === 'door_profile' ? 'aspect-[4/5]' : undefined} />
       </Section>
     </>
   )

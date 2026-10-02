@@ -6,11 +6,13 @@ import ImageField from './ImageField'
 // key -> [group title, fields]; field = [name, label, type]
 const GROUPS = {
   hero: ['Home — Hero banner', [['title', 'Headline', 'text'], ['subtitle', 'Sub-text', 'textarea'], ['image_url', 'Background image', 'image']]],
-  home: ['Home — Featured cards', [['stock_image', 'Stock Cabinetry card image', 'image'], ['custom_image', 'Custom Cabinetry card image', 'image']]],
   philosophy: ['Home — Philosophy', [['text', 'Text', 'textarea']]],
-  about: ['About Us', [['heading', 'Heading', 'text'], ['title', 'Professional title', 'text'], ['image_url', 'Photo', 'image'], ['body', 'Bio', 'textarea'], ['closing', 'Closing line', 'text']]],
-  contact: ['Contact info & footer', [['phone', 'Phone', 'text'], ['email', 'Public email', 'text'], ['address', 'Address', 'textarea'], ['hours', 'Business hours', 'textarea'], ['instagram', 'Instagram URL', 'text']]],
+  about: ['About Us', [['heading', 'Heading', 'text'], ['title', 'Professional title', 'text'], ['image_url', 'Photo', 'image'], ['body', 'Bio', 'textarea'], ['closing', 'Closing line (also used on the Home CTA)', 'text']]],
+  contact: ['Contact info & footer', [['phone', 'Phone', 'text'], ['email', 'Public email', 'text'], ['address', 'Address', 'textarea'], ['hours', 'Business hours', 'textarea'], ['instagram', 'Instagram URL', 'text'], ['linkedin', 'LinkedIn URL', 'text']]],
   terms: ['Terms and Conditions', [['body', 'Content', 'textarea']]],
+  measurementGuide: ['Measurement Guide', [['body', 'Content', 'textarea']]],
+  shipping: ['Shipment & Delivery Information', [['body', 'Content', 'textarea']]],
+  faq: ["FAQ's", [['body', 'Content', 'textarea']]],
 }
 
 function Group({ k, title, fields, initial }) {

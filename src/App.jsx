@@ -15,6 +15,10 @@ const Schedule = lazy(() => import('./pages/Schedule'))
 const About = lazy(() => import('./pages/About'))
 const Contact = lazy(() => import('./pages/Contact'))
 const Terms = lazy(() => import('./pages/Terms'))
+const MeasurementGuide = lazy(() => import('./pages/MeasurementGuide'))
+const Shipping = lazy(() => import('./pages/Shipping'))
+const FAQ = lazy(() => import('./pages/FAQ'))
+const Search = lazy(() => import('./pages/Search'))
 const Admin = lazy(() => import('./admin/Admin'))
 
 const Fallback = () => <div className="min-h-[60vh]" />
@@ -36,6 +40,10 @@ export default function App() {
           <Route path="about" element={<About />} />
           <Route path="contact" element={<Contact />} />
           <Route path="terms" element={<Terms />} />
+          <Route path="measurement-guide" element={<MeasurementGuide />} />
+          <Route path="shipping" element={<Shipping />} />
+          <Route path="faq" element={<FAQ />} />
+          <Route path="search" element={<Search />} />
           <Route path="*" element={<div className="py-32 text-center font-serif text-3xl">Page not found</div>} />
         </Route>
       </Routes>

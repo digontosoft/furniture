@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { clearCache } from '../lib/api'
+import { clearCache, STYLE_GROUPS } from '../lib/api'
 import ImageField from './ImageField'
 
-const EMPTY = { name: '', description: '', image_url: '', category: '', sku: '', size: '', sort_order: 0, published: true }
+const EMPTY = { name: '', description: '', image_url: '', category: '', sku: '', size: '', style: '', sort_order: 0, published: true }
 
 export default function ItemsManager({ section, title, childSection, back, noText }) {
   const { parentId } = useParams()
@@ -66,6 +66,15 @@ export default function ItemsManager({ section, title, childSection, back, noTex
               <div><label className="label">Name</label><input required className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
               <div><label className="label">Short description (optional)</label><input className="input" value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
             </>
+          )}
+          {section === 'stock_collection' && (
+            <div>
+              <label className="label">Door style group</label>
+              <select className="input" value={form.style || ''} onChange={(e) => setForm({ ...form, style: e.target.value })}>
+                <option value="">Auto (guess from name)</option>
+                {STYLE_GROUPS.map((g) => <option key={g}>{g}</option>)}
+              </select>
+            </div>
           )}
           {section === 'stock_item' && (
             <div className="grid gap-4 md:grid-cols-3">

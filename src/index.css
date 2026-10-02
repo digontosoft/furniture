@@ -1,14 +1,17 @@
 @import "tailwindcss";
 
+/* Client palette (Notes on site.docx): warm sandy tones + olive/dusty-blue accents */
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Cormorant Garamond", Georgia, serif;
-  --color-cream: #faf7f2;
-  --color-sand: #efe8dc;
-  --color-ink: #2b2723;
-  --color-muted: #7a7169;
-  --color-brand: #5b6b57;
-  --color-brand-dark: #44523f;
+  --color-cream: #f5f1e9;    /* Ivory */
+  --color-sand: #d8c8b4;     /* Warm Sand */
+  --color-taupe: #b9aa98;    /* Light Taupe */
+  --color-ink: #3d3a35;      /* Warm Charcoal */
+  --color-muted: #8f8375;    /* Warm Greige */
+  --color-brand: #7a8063;    /* Muted Olive */
+  --color-brand-dark: #4f5945; /* Deep Olive */
+  --color-dusty-blue: #aabcc0;
 }
 
 html { scroll-behavior: smooth; }
@@ -19,3 +22,15 @@ h1, h2, h3 { @apply font-serif; }
 .btn-outline { @apply inline-flex items-center justify-center rounded-full border border-ink/30 px-6 py-3 text-sm font-medium transition hover:bg-ink hover:text-white; }
 .input { @apply w-full rounded-lg border border-ink/20 bg-white px-4 py-3 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20; }
 .label { @apply mb-1 block text-sm font-medium; }
+
+/* Auto-scrolling door-tile rail on the Home page (like gginapod.com).
+   The list is rendered twice and slid by -50% for a seamless loop; items use
+   padding (not gap) so the halves are exactly equal. Pauses on hover. */
+.marquee-wrap { overflow: hidden; }
+.marquee { display: flex; width: max-content; animation: marquee var(--marquee-duration, 60s) linear infinite; }
+.marquee-wrap:hover .marquee { animation-play-state: paused; }
+@keyframes marquee { to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) {
+  .marquee-wrap { overflow-x: auto; }
+  .marquee { animation: none; }
+}

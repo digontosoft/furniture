@@ -63,7 +63,7 @@ export default function Admin() {
         <p className="mb-4 font-serif text-xl">Admin Panel</p>
         <nav className="flex gap-1 overflow-x-auto md:flex-col">
           {MENU.map(([to, label]) => (
-            <NavLink key={to} to={to}
+            <NavLink key={to} to={`/admin/${to}`} end
               className={({ isActive }) => `whitespace-nowrap rounded-lg px-3 py-2 text-sm ${isActive ? 'bg-white/15' : 'text-white/70 hover:bg-white/10'}`}>
               {label}
             </NavLink>
