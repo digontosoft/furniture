@@ -14,23 +14,27 @@
   --color-dusty-blue: #aabcc0;
 }
 
-html { scroll-behavior: smooth; }
-body { @apply bg-cream text-ink font-sans antialiased; }
-h1, h2, h3 { @apply font-serif; }
+/* Layered so utility classes (e.g. `font-sans` on a heading) can still override them. */
+@layer base {
+  html { scroll-behavior: smooth; }
+  body { @apply bg-cream text-ink font-sans antialiased; }
+  h1, h2, h3 { @apply font-serif; }
+}
 
-.btn { @apply inline-flex items-center justify-center rounded-full bg-brand px-6 py-3 text-sm font-medium text-white transition hover:bg-brand-dark disabled:opacity-50; }
-.btn-outline { @apply inline-flex items-center justify-center rounded-full border border-ink/30 px-6 py-3 text-sm font-medium transition hover:bg-ink hover:text-white; }
-.input { @apply w-full rounded-lg border border-ink/20 bg-white px-4 py-3 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20; }
-.label { @apply mb-1 block text-sm font-medium; }
+@layer components {
+  .btn { @apply inline-flex items-center justify-center rounded-full bg-brand px-6 py-3 text-sm font-medium text-white transition hover:bg-brand-dark disabled:opacity-50; }
+  .btn-outline { @apply inline-flex items-center justify-center rounded-full border border-ink/30 px-6 py-3 text-sm font-medium transition hover:bg-ink hover:text-white; }
+  .input { @apply w-full rounded-lg border border-ink/20 bg-white px-4 py-3 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20; }
+  .label { @apply mb-1 block text-sm font-medium; }
+}
 
 /* Auto-scrolling door-tile rail on the Home page (like gginapod.com).
    The list is rendered twice and slid by -50% for a seamless loop; items use
-   padding (not gap) so the halves are exactly equal. Pauses on hover. */
+   padding (not gap) so the halves are exactly equal. Pauses on hover.
+   It deliberately keeps moving even with the OS "reduce motion" setting: the client asked
+   for auto-scroll, and that setting (often off-by-default animations on Windows) was making
+   it look manual. It is slow, decorative, and stops on hover. */
 .marquee-wrap { overflow: hidden; }
 .marquee { display: flex; width: max-content; animation: marquee var(--marquee-duration, 60s) linear infinite; }
-.marquee-wrap:hover .marquee { animation-play-state: paused; }
+.marquee-wrap:hover .marquee, .marquee-wrap:focus-within .marquee { animation-play-state: paused; }
 @keyframes marquee { to { transform: translateX(-50%); } }
-@media (prefers-reduced-motion: reduce) {
-  .marquee-wrap { overflow-x: auto; }
-  .marquee { animation: none; }
-}

@@ -6,7 +6,7 @@ export default function About() {
   const { about } = useSettings()
   return (
     <>
-      <PageHeader title="About Us" />
+      <PageHeader page="about" />
       <Section className="max-w-4xl">
         <div className={about.image_url ? 'grid items-start gap-10 md:grid-cols-[1fr_1.4fr]' : ''}>
           {about.image_url && <img src={about.image_url} alt="" className="w-full rounded-2xl object-cover" />}

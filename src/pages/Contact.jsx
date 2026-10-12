@@ -6,7 +6,7 @@ export default function Contact() {
   const { contact } = useSettings()
   return (
     <>
-      <PageHeader title="Contact Us" />
+      <PageHeader page="contact" />
       <Section>
         <div className="grid gap-12 md:grid-cols-[1fr_1.4fr]">
           <div className="space-y-5">

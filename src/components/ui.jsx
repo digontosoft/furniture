@@ -1,14 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useItems } from '../lib/api'
+import { useItems, useSettings } from '../lib/api'
+import { PAGES, SECTIONS, tabsFor, inTab, thumb } from '../lib/catalog'
 
-export function PageHeader({ title, subtitle }) {
-  useEffect(() => { document.title = `${title} | Two G’s In A Pod` }, [title])
+/** Coloured page header; `page` picks the colour and the admin-editable headline. */
+export function PageHeader({ page, title, subtitle }) {
+  const { pages } = useSettings()
+  const p = PAGES[page] || {}
+  const heading = (page && pages?.[`${page}_title`]) || title || p.title || ''
+  const sub = page && pages?.[`${page}_subtitle`] !== undefined ? pages[`${page}_subtitle`] : subtitle ?? p.subtitle
+  useEffect(() => { document.title = `${heading} | Two G’s In A Pod` }, [heading])
   return (
-    <section className="bg-sand">
+    <section style={{ backgroundColor: p.bg || '#D8C8B4' }} className={p.dark ? 'text-white' : 'text-ink'}>
       <div className="mx-auto max-w-7xl px-5 py-14 text-center md:py-20">
-        <h1 className="text-4xl font-semibold md:text-6xl">{title}</h1>
-        {subtitle && <p className="mx-auto mt-4 max-w-2xl text-muted">{subtitle}</p>}
+        <h1 className="text-4xl font-semibold md:text-6xl">{heading}</h1>
+        {sub && <p className={`mx-auto mt-4 max-w-2xl text-lg ${p.dark ? 'text-white' : 'text-ink/90'}`}>{sub}</p>}
       </div>
     </section>
   )
@@ -17,8 +23,7 @@ export function PageHeader({ title, subtitle }) {
 /**
  * Per client notes: cabinetry door tiles stay square-cornered and uncropped —
  * no rounded corners, no "white border" box. `fit="cover"` is used for the
- * full-bleed door-style tiles; `fit="contain"` shows the whole tile with an
- * optional ring border (used on a stock collection's item grid).
+ * full-bleed tiles; `fit="contain"` shows the whole tile with an optional ring border.
  */
 export function Tile({ item, onClick, to, fit = 'cover', bordered = false, aspect = 'aspect-square', priority, caption }) {
   // `aspect` should match the image's shape so `contain` leaves no visible frame.
@@ -27,7 +32,7 @@ export function Tile({ item, onClick, to, fit = 'cover', bordered = false, aspec
     <>
       <div className={`${aspect} overflow-hidden ${box}`}>
         {item.image_url && (
-          <img src={item.image_url} alt={item.name} loading={priority ? 'eager' : 'lazy'} fetchPriority={priority ? 'high' : undefined} decoding="async"
+          <img src={thumb(item.image_url)} alt={item.name} loading={priority ? 'eager' : 'lazy'} fetchPriority={priority ? 'high' : undefined} decoding="async"
             className={`h-full w-full transition duration-500 group-hover:scale-105 ${fit === 'contain' ? 'object-contain' : 'object-cover'}`} />
         )}
       </div>
@@ -78,31 +83,168 @@ export function Lightbox({ item, onClose }) {
   )
 }
 
-/** Fetches a section and renders it as a square-tile grid with optional lightbox and category filter. */
-export function ItemsGrid({ section, parentId, lightbox = true, fit = 'cover', bordered = false, aspect, showAllTab = true, emptyText = 'Coming soon.' }) {
+/** Category tabs for a section's items, using the admin-managed category list. */
+export function useTabs(section, items) {
+  const { categories } = useSettings()
+  const list = categories?.[section]
+  const tabs = useMemo(() => tabsFor(section, items, list), [section, items, list])
+  const [picked, setPicked] = useState(null)
+  const firstFilled = tabs.find((t) => (items || []).some((i) => inTab(section, list, t, i)))
+  const active = tabs.includes(picked) ? picked : firstFilled ?? tabs[0] ?? null
+  const shown = (items || []).filter((i) => inTab(section, list, active, i))
+  return { tabs, active, setActive: setPicked, shown }
+}
+
+export function FilterTabs({ tabs, active, onChange, className = 'justify-center' }) {
+  if (tabs.length < 2) return null
+  return (
+    <div role="tablist" className={`mb-8 flex flex-wrap gap-2 ${className}`}>
+      {tabs.map((t) => (
+        <button key={t} role="tab" aria-selected={active === t} onClick={() => onChange(t)}
+          className={`rounded-full border px-4 py-2 text-sm transition ${active === t ? 'border-brand bg-brand text-white' : 'border-ink/20 hover:border-brand'}`}>{t}</button>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * Fetches a section and renders it as a tile grid with category tabs.
+ * Sections with their own detail page (countertops, flooring, backsplash) link there;
+ * the rest open a lightbox.
+ */
+export function ItemsGrid({ section, parentId, fit = 'cover', bordered = false, aspect, emptyText = 'Coming soon.' }) {
   const { items, loading, error } = useItems(section, parentId)
-  const [active, setActive] = useState(null)
-  const cats = useMemo(() => [...new Set((items || []).map((i) => i.category).filter(Boolean))], [items])
-  const [cat, setCat] = useState(showAllTab ? 'All' : null)
-  useEffect(() => { if (!showAllTab && cats.length) setCat((c) => c ?? cats[0]) }, [showAllTab, cats])
+  const { tabs, active, setActive, shown } = useTabs(section, items)
+  const [zoomed, setZoomed] = useState(null)
+  const conf = SECTIONS[section] || {}
+  const link = conf.detail
   if (loading) return <Skeleton />
   if (error) return <p className="text-center text-red-700">Could not load content.</p>
-  if (!items.length) return <p className="py-10 text-center text-muted">{emptyText}</p>
-  const tabs = showAllTab ? ['All', ...cats] : cats
-  const shown = !cat || cat === 'All' ? items : items.filter((it) => it.category === cat)
   return (
     <>
-      {tabs.length > 1 && (
-        <div className="mb-8 flex flex-wrap justify-center gap-2">
-          {tabs.map((c) => (
-            <button key={c} onClick={() => setCat(c)}
-              className={`rounded-full border px-4 py-2 text-sm transition ${cat === c ? 'border-brand bg-brand text-white' : 'border-ink/20 hover:border-brand'}`}>{c}</button>
+      <FilterTabs tabs={tabs} active={active} onChange={setActive} />
+      {!shown.length ? (
+        <p className="py-10 text-center text-muted">{emptyText}</p>
+      ) : (
+        <Grid>
+          {shown.map((it, i) => (
+            <Tile key={it.id} item={it} fit={fit} bordered={bordered} aspect={aspect} priority={i < 8}
+              to={link ? conf.path(it) : undefined}
+              onClick={!link && it.image_url ? () => setZoomed(it) : undefined} />
+          ))}
+        </Grid>
+      )}
+      <Lightbox item={zoomed} onClose={() => setZoomed(null)} />
+    </>
+  )
+}
+
+/**
+ * Main photo + a small scrolling strip of thumbnails to switch between photos.
+ * With `aspect` the photo fills a fixed shape (e.g. a slab); otherwise it is shown whole.
+ */
+export function PhotoViewer({ photos, alt, aspect, height = 'h-[420px] md:h-[520px]', bordered }) {
+  const [index, setIndex] = useState(0)
+  const [zoom, setZoom] = useState(false)
+  useEffect(() => setIndex(0), [photos.join('|')])
+  if (!photos.length) return null
+  const current = photos[Math.min(index, photos.length - 1)]
+  return (
+    <div>
+      <button type="button" onClick={() => setZoom(true)} aria-label="Enlarge photo"
+        className={`flex w-full cursor-zoom-in items-center justify-center overflow-hidden ${aspect || height}`}>
+        <img src={current} alt={alt} decoding="async"
+          className={aspect ? 'h-full w-full object-cover' : `max-h-full max-w-full ${bordered ? 'border border-ink/30' : ''}`} />
+      </button>
+      {photos.length > 1 && (
+        <div className="mx-auto mt-4 flex w-fit max-w-full gap-2 overflow-x-auto pb-1">
+          {photos.map((src, n) => (
+            <button key={src + n} type="button" onClick={() => setIndex(n)} aria-label={`Show photo ${n + 1}`}
+              className={`h-16 w-16 shrink-0 overflow-hidden border-2 md:h-20 md:w-20 ${n === index ? 'border-brand' : 'border-transparent opacity-70 hover:opacity-100'}`}>
+              <img src={thumb(src)} alt="" loading="lazy" className="h-full w-full object-cover" />
+            </button>
           ))}
         </div>
       )}
-      <Grid>{shown.map((it, i) => <Tile key={it.id} item={it} fit={fit} bordered={bordered} aspect={aspect} priority={i < 8} onClick={lightbox && it.image_url ? () => setActive(it) : undefined} />)}</Grid>
-      <Lightbox item={active} onClose={() => setActive(null)} />
-    </>
+      <Lightbox item={zoom ? { image_url: current, name: alt } : null} onClose={() => setZoom(false)} />
+    </div>
+  )
+}
+
+/** Spec rows ([label, value]) in one of three looks: list (stock), cards (slab), table (flooring). */
+export function SpecsList({ rows, variant = 'list', title }) {
+  const list = (rows || []).filter(([k, v]) => k && v)
+  if (!list.length) return null
+  return (
+    <div>
+      {title && <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.15em] text-ink/80">{title}</h2>}
+      {variant === 'cards' ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {list.map(([k, v]) => (
+            <div key={k} className="border border-ink/15 bg-white/60 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted">{k}</p>
+              <p className="mt-1 whitespace-pre-line">{v}</p>
+            </div>
+          ))}
+        </div>
+      ) : variant === 'table' ? (
+        <dl className="grid grid-cols-[auto_1fr] text-sm">
+          {list.map(([k, v]) => (
+            <div key={k} className="contents">
+              <dt className="py-2 pr-5 text-right text-xs font-semibold uppercase tracking-wider text-ink/80">{k}</dt>
+              <dd className="whitespace-pre-line border-l-2 border-brand/60 py-2 pl-5 uppercase text-ink/75">{v}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : (
+        <dl className="space-y-2">
+          {list.map(([k, v]) => (
+            <div key={k} className="text-sm">
+              <dt className="inline font-semibold">{k}: </dt>
+              <dd className="inline">{v}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </div>
+  )
+}
+
+const inline = (text) =>
+  text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    /^\*\*[^*]+\*\*$/.test(part) ? <strong key={i} className="font-semibold text-ink">{part.slice(2, -2)}</strong> : part)
+
+const BULLET = /^\s*[-•*]\s+/
+
+/**
+ * Admin-written long text (Terms, FAQ, …). Blank lines split paragraphs; a short line on its
+ * own like "1. Our Services" or "## Heading" becomes a bold heading; **text** is bold;
+ * lines starting with "- ", "* " or "• " become a bullet list.
+ */
+export function RichText({ text }) {
+  const blocks = (text || '').split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean)
+  return (
+    <div className="space-y-4 text-ink/80">
+      {blocks.map((b, i) => {
+        if (!b.includes('\n') && (/^#{1,3}\s+/.test(b) || /^\d+\.\s+\S.{0,90}$/.test(b)))
+          return <h2 key={i} className="pt-4 font-sans text-lg font-bold text-ink">{b.replace(/^#{1,3}\s+/, '')}</h2>
+        // split the block into runs of plain lines and runs of bullet lines
+        const runs = []
+        for (const line of b.split('\n')) {
+          const isBullet = BULLET.test(line)
+          const last = runs[runs.length - 1]
+          if (last && last.bullet === isBullet) last.lines.push(line)
+          else runs.push({ bullet: isBullet, lines: [line] })
+        }
+        return (
+          <div key={i} className="space-y-2">
+            {runs.map((r, j) => r.bullet
+              ? <ul key={j} className="list-disc space-y-1 pl-6">{r.lines.map((l, k) => <li key={k}>{inline(l.replace(BULLET, ''))}</li>)}</ul>
+              : <p key={j} className="whitespace-pre-line">{inline(r.lines.join('\n'))}</p>)}
+          </div>
+        )
+      })}
+    </div>
   )
 }
 

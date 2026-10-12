@@ -2,9 +2,10 @@ import { useSearchParams } from 'react-router-dom'
 import { PageHeader, Section, ItemsGrid } from '../components/ui'
 
 const TABS = [
-  ['door_profile', 'Door Profile'],
-  ['paint', 'Paint'],
-  ['stain', 'Stain'],
+  ['door_profile', 'Door Profiles'],
+  ['paint', 'Paints'],
+  ['stain', 'Stains'],
+  ['melamine', 'Textured Melamine'],
 ]
 
 export default function CustomCabinetry() {
@@ -12,13 +13,13 @@ export default function CustomCabinetry() {
   const tab = TABS.some(([k]) => k === params.get('tab')) ? params.get('tab') : 'door_profile'
   return (
     <>
-      <PageHeader title="Custom Cabinetry" subtitle="Choose every detail, from your door profile to your perfect stain or paint color." />
+      <PageHeader page="custom" />
       <Section>
-        <div role="tablist" className="mb-10 flex justify-center gap-2 border-b border-ink/10">
+        <div role="tablist" className="mb-10 flex flex-wrap justify-center gap-x-2 border-b border-ink/10">
           {TABS.map(([key, label]) => (
             <button key={key} role="tab" aria-selected={tab === key}
               onClick={() => setParams({ tab: key }, { replace: true })}
-              className={`-mb-px border-b-2 px-5 py-3 font-serif text-xl transition md:px-8 md:text-2xl ${tab === key ? 'border-brand text-brand' : 'border-transparent text-muted hover:text-ink'}`}>
+              className={`-mb-px border-b-2 px-4 py-3 font-serif text-xl transition md:px-7 md:text-2xl ${tab === key ? 'border-brand text-brand' : 'border-transparent text-muted hover:text-ink'}`}>
               {label}
             </button>
           ))}

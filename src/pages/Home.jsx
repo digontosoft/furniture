@@ -1,18 +1,20 @@
 import { Link } from 'react-router-dom'
 import { useItems, useSettings } from '../lib/api'
+import { railItems, thumb } from '../lib/catalog'
 
-function Photo({ src, alt = '', className = '' }) {
-  return src ? <img src={src} alt={alt} loading="lazy" decoding="async" className={`h-full w-full object-cover ${className}`} /> : <div className="h-full w-full bg-sand" />
-}
-
-/** Horizontal scrolling strip of door tiles (client notes: "Scroll Bars like on gginapod.com"). */
-function DoorRail({ title, to, items, aspect, width }) {
-  if (!items?.length) return null
+/**
+ * Auto-scrolling strip of tiles (client notes: "Scroll Bars like on gginapod.com").
+ * Admins pick which items appear ("Show on Home page") and their order (drag to reorder).
+ */
+function Rail({ title, to, section, aspect, width, fit = 'contain' }) {
+  const { items } = useItems(section)
+  const list = railItems(items)
+  if (!list.length) return null
   // Rendered twice for a seamless loop; the second copy is hidden from screen readers.
   const tile = (it, copy) => (
     <div key={`${copy}-${it.id}`} className={`${width} shrink-0 pr-3 md:pr-4`} aria-hidden={copy ? true : undefined}>
       <div className={`${aspect} overflow-hidden`}>
-        {it.image_url && <img src={it.image_url} alt={copy ? '' : it.name} loading="lazy" decoding="async" className="h-full w-full object-contain" />}
+        {it.image_url && <img src={thumb(it.image_url)} alt={copy ? '' : it.name} loading="lazy" decoding="async" className={`h-full w-full ${fit === 'cover' ? 'object-cover' : 'object-contain'}`} />}
       </div>
       <p className="mt-2 truncate text-sm font-medium">{it.name}</p>
     </div>
@@ -21,9 +23,9 @@ function DoorRail({ title, to, items, aspect, width }) {
     <div>
       <Link to={to} className="mb-6 block text-center font-serif text-3xl font-semibold uppercase tracking-[0.12em] hover:text-brand md:text-4xl">{title}</Link>
       <div className="marquee-wrap">
-        <div className="marquee" style={{ '--marquee-duration': `${items.length * 4}s` }}>
-          {items.map((it) => tile(it, 0))}
-          {items.map((it) => tile(it, 1))}
+        <div className="marquee" style={{ '--marquee-duration': `${Math.max(list.length, 6) * 4}s` }}>
+          {list.map((it) => tile(it, 0))}
+          {list.map((it) => tile(it, 1))}
         </div>
       </div>
     </div>
@@ -32,9 +34,6 @@ function DoorRail({ title, to, items, aspect, width }) {
 
 export default function Home() {
   const { hero, philosophy, about } = useSettings()
-  const { items: stockCols } = useItems('stock_collection')
-  const { items: doorProfiles } = useItems('door_profile')
-  const { items: gallery } = useItems('gallery')
 
   return (
     <>
@@ -58,29 +57,14 @@ export default function Home() {
         </div>
       </section>
 
-      {/* CABINETRY — scrolling door tiles */}
+      {/* SCROLL BARS */}
       <section className="bg-sand">
-        <div className="mx-auto max-w-7xl space-y-12 px-5 py-16 md:py-20">
-          <DoorRail title="Stock Cabinetry" to="/stock-cabinetry" items={stockCols} aspect="aspect-[52/100]" width="w-36 md:w-48" />
-          <DoorRail title="Custom Cabinetry" to="/custom-cabinetry" items={doorProfiles?.slice(0, 16)} aspect="aspect-[4/5]" width="w-44 md:w-60" />
-        </div>
-      </section>
-
-      {/* PORTFOLIO */}
-      <section className="mx-auto max-w-7xl px-5 py-16 md:py-24">
-        <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-brand">Portfolio</p>
-            <h2 className="mt-3 text-4xl font-semibold md:text-5xl">Spaces We’ve Created</h2>
-          </div>
-          <Link to="/spaces-weve-created" className="btn-outline">View all</Link>
-        </div>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5">
-          {(gallery || []).slice(0, 6).map((g, i) => (
-            <Link to="/spaces-weve-created" key={g.id} className={`group overflow-hidden bg-sand ${i === 0 ? 'col-span-2 row-span-2 aspect-square md:col-span-1' : 'aspect-square'}`}>
-              <Photo src={g.image_url} alt={g.name} className="transition duration-700 group-hover:scale-105" />
-            </Link>
-          ))}
+        <div className="mx-auto max-w-7xl space-y-14 px-5 py-16 md:py-20">
+          <Rail title="Stock Cabinetry" to="/stock-cabinetry" section="stock_collection" aspect="aspect-[52/100]" width="w-36 md:w-48" />
+          <Rail title="Custom Cabinetry" to="/custom-cabinetry" section="door_profile" aspect="aspect-[4/5]" width="w-44 md:w-60" />
+          <Rail title="Countertops" to="/countertops" section="countertop" aspect="aspect-square" width="w-44 md:w-56" fit="cover" />
+          <Rail title="Flooring" to="/flooring" section="flooring" aspect="aspect-square" width="w-44 md:w-56" fit="cover" />
+          <Rail title="Backsplash" to="/backsplash" section="backsplash" aspect="aspect-square" width="w-44 md:w-56" fit="cover" />
         </div>
       </section>
 

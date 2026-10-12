@@ -10,17 +10,25 @@ const NAV_LEFT = [
   ['/flooring', 'Flooring'],
 ]
 const NAV_RIGHT = [
+  ['/backsplash', 'Backsplash'],
   ['/spaces-weve-created', "Spaces We've Created"],
   ['/about', 'About Us'],
   ['/contact', 'Contact Us'],
 ]
-// Full list, used by the mobile hamburger menu (per client notes).
+// Mobile hamburger menu, in the client's order.
 export const NAV_MOBILE = [
   ...NAV_LEFT,
-  ...NAV_RIGHT.slice(0, 1),
+  ...NAV_RIGHT.slice(0, 2),
   ['/measurement-guide', 'Measurement Guide'],
   ['/shipping', 'Shipment & Delivery Information'],
-  ...NAV_RIGHT.slice(1),
+  ...NAV_RIGHT.slice(2),
+]
+const FOOTER_LINKS = [
+  ['/contact', 'Contact Us'],
+  ['/faq', 'FAQ’s'],
+  ['/measurement-guide', 'Measurement Guide'],
+  ['/shipping', 'Shipping & Delivery Information'],
+  ['/terms', 'Terms and Conditions'],
 ]
 
 const SearchIcon = () => (
@@ -48,14 +56,6 @@ function SearchForm({ onDone, autoFocus, className = '' }) {
   )
 }
 
-function SearchBox({ open, setOpen }) {
-  if (!open)
-    return (
-      <button aria-label="Search" onClick={() => setOpen(true)} className="text-ink/70 hover:text-brand"><SearchIcon /></button>
-    )
-  return <SearchForm autoFocus onDone={() => setOpen(false)} className="w-48" />
-}
-
 const InstagramIcon = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" /></svg>
 )
@@ -64,52 +64,64 @@ const LinkedInIcon = () => (
 )
 
 export default function Layout() {
-  const [open, setOpen] = useState(false)
+  const [menu, setMenu] = useState(false)
   const [search, setSearch] = useState(false)
   const { pathname } = useLocation()
   const { contact } = useSettings()
 
   useEffect(() => {
-    setOpen(false)
+    setMenu(false)
+    setSearch(false)
     window.scrollTo(0, 0)
   }, [pathname])
 
+  // 9 tabs + logo: slightly smaller text between 1280px and 1440px so everything fits on one line
   const link = ({ isActive }) =>
-    `whitespace-nowrap text-sm transition hover:text-brand ${isActive ? 'text-brand font-semibold' : 'text-ink/80'}`
+    `whitespace-nowrap text-[13px] transition hover:text-brand min-[1440px]:text-sm ${isActive ? 'text-brand font-semibold' : 'text-ink/80'}`
+  const navGap = 'gap-3.5 min-[1440px]:gap-5'
 
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-40 border-b border-ink/10 bg-cream/90 backdrop-blur">
         <div className="mx-auto grid max-w-7xl grid-cols-[1fr_auto_1fr] items-center gap-4 px-5 py-4">
-          <nav className="hidden items-center gap-5 xl:flex">
-            {NAV_LEFT.map(([to, label]) => (
-              <NavLink key={to} to={to} end={to === '/'} className={link}>{label}</NavLink>
-            ))}
-          </nav>
+          {/* left: desktop tabs / mobile hamburger */}
+          <div className="flex items-center">
+            <button className="xl:hidden" aria-label="Menu" aria-expanded={menu} onClick={() => { setMenu(!menu); setSearch(false) }}>
+              <svg width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2"><path d={menu ? 'M5 5l16 16M21 5L5 21' : 'M3 7h20M3 13h20M3 19h20'} /></svg>
+            </button>
+            <nav className={`hidden items-center xl:flex ${navGap}`}>
+              {NAV_LEFT.map(([to, label]) => <NavLink key={to} to={to} end={to === '/'} className={link}>{label}</NavLink>)}
+            </nav>
+          </div>
 
-          <Link to="/" className="justify-self-center text-center font-serif text-xl font-semibold uppercase leading-tight tracking-[0.08em] md:text-2xl xl:justify-self-auto">
+          <Link to="/" className="text-center font-serif text-lg font-semibold uppercase leading-tight tracking-[0.08em] sm:text-xl md:text-2xl xl:text-xl min-[1440px]:text-2xl">
             Two G’s In A Pod
-            <span className="block text-[11px] font-sans font-normal tracking-[0.2em] text-muted">Design &amp; Interiors</span>
+            <span className="block text-[10px] font-sans font-normal tracking-[0.2em] text-muted sm:text-[11px]">Design &amp; Interiors</span>
           </Link>
 
-          <div className="flex items-center justify-end gap-5">
-            <nav className="hidden items-center gap-5 xl:flex">
-              {NAV_RIGHT.map(([to, label]) => (
-                <NavLink key={to} to={to} end={to === '/'} className={link}>{label}</NavLink>
-              ))}
+          {/* right: desktop tabs + search / mobile search icon */}
+          <div className={`flex items-center justify-end ${navGap}`}>
+            <nav className={`hidden items-center xl:flex ${navGap}`}>
+              {NAV_RIGHT.map(([to, label]) => <NavLink key={to} to={to} className={link}>{label}</NavLink>)}
             </nav>
-            <div className="hidden xl:block"><SearchBox open={search} setOpen={setSearch} /></div>
-            <button className="xl:hidden" aria-label="Menu" onClick={() => setOpen(!open)}>
-              <svg width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2"><path d={open ? 'M5 5l16 16M21 5L5 21' : 'M3 7h20M3 13h20M3 19h20'} /></svg>
-            </button>
+            {search && <div className="hidden xl:block"><SearchForm autoFocus onDone={() => setSearch(false)} className="w-48" /></div>}
+            {!search && (
+              <button aria-label="Search" onClick={() => { setSearch(true); setMenu(false) }} className="text-ink/70 hover:text-brand"><SearchIcon /></button>
+            )}
+            {search && (
+              <button aria-label="Close search" onClick={() => setSearch(false)} className="text-ink/70 xl:hidden">
+                <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 5l12 12M17 5L5 17" /></svg>
+              </button>
+            )}
           </div>
         </div>
-        {open && (
+
+        {search && (
+          <div className="border-t border-ink/10 px-5 py-3 xl:hidden"><SearchForm autoFocus onDone={() => setSearch(false)} /></div>
+        )}
+        {menu && (
           <nav className="flex flex-col gap-4 border-t border-ink/10 px-5 py-5 xl:hidden">
-            <SearchForm onDone={() => setOpen(false)} />
-            {NAV_MOBILE.map(([to, label]) => (
-              <NavLink key={to} to={to} end={to === '/'} className={link}>{label}</NavLink>
-            ))}
+            {NAV_MOBILE.map(([to, label]) => <NavLink key={to} to={to} end={to === '/'} className={link}>{label}</NavLink>)}
           </nav>
         )}
       </header>
@@ -121,7 +133,7 @@ export default function Layout() {
           <div className="space-y-1">
             <p className="font-serif text-2xl text-white">Two G’s In A Pod</p>
             <p className="text-sm">Design &amp; Interiors</p>
-            {contact.hours && <p className="pt-3 text-sm">{contact.hours}</p>}
+            {contact.hours && <p className="whitespace-pre-line pt-3 text-sm">{contact.hours}</p>}
             {contact.phone && <p className="text-sm"><a href={`tel:${contact.phone}`} className="hover:text-white">{contact.phone}</a></p>}
           </div>
 
@@ -133,13 +145,12 @@ export default function Layout() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-1 text-sm md:items-end">
-            <Link to="/contact" className="hover:text-white">Contact Us</Link>
-            <Link to="/faq" className="hover:text-white">FAQ’s</Link>
-            <Link to="/terms" className="hover:text-white">Terms and Conditions</Link>
-          </div>
+          <nav className="flex flex-col gap-1.5 text-sm md:items-end">
+            {FOOTER_LINKS.map(([to, label]) => <Link key={to} to={to} className="hover:text-white">{label}</Link>)}
+          </nav>
         </div>
-        <p className="border-t border-white/10 py-4 text-center text-xs">© {new Date().getFullYear()} Two G’s In A Pod | Design &amp; Interiors</p>
+        {/* extra bottom space keeps the links clear of Netlify's fixed bottom-right badge */}
+        <p className="border-t border-white/10 pb-16 pt-4 text-center text-xs">© {new Date().getFullYear()} Two G’s In A Pod | Design &amp; Interiors</p>
       </footer>
     </div>
   )

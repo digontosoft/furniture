@@ -3,6 +3,7 @@ import { NavLink, Route, Routes, Navigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import ItemsManager from './ItemsManager'
 import SettingsEditor from './SettingsEditor'
+import CategoriesEditor from './CategoriesEditor'
 import Submissions from './Submissions'
 
 function Login() {
@@ -32,14 +33,30 @@ function Login() {
 const MENU = [
   ['submissions', 'Requests & Messages'],
   ['stock', 'Stock — Door Styles'],
-  ['stock-items', 'Stock — Items (all)'],
+  ['stock-items', 'Stock — Items'],
   ['door-profiles', 'Door Profiles'],
   ['paints', 'Paints'],
   ['stains', 'Stains'],
+  ['melamine', 'Textured Melamine'],
   ['countertops', 'Countertops'],
   ['flooring', 'Flooring'],
-  ['gallery', 'Spaces Gallery'],
+  ['backsplash', 'Backsplash'],
+  ['gallery', "Spaces We've Created"],
+  ['categories', 'Categories (tabs)'],
   ['settings', 'Site Content'],
+]
+
+// [url, section, page title]
+const LISTS = [
+  ['stock-items', 'stock_item', 'Stock Cabinetry Items (shared by every door style)'],
+  ['door-profiles', 'door_profile', 'Custom — Door Profiles'],
+  ['paints', 'paint', 'Custom — Paints'],
+  ['stains', 'stain', 'Custom — Stains'],
+  ['melamine', 'melamine', 'Custom — Textured Melamine'],
+  ['countertops', 'countertop', 'Countertops'],
+  ['flooring', 'flooring', 'Flooring'],
+  ['backsplash', 'backsplash', 'Backsplash'],
+  ['gallery', 'gallery', "Spaces We've Created"],
 ]
 
 export default function Admin() {
@@ -79,14 +96,9 @@ export default function Admin() {
           <Route index element={<Navigate to="submissions" replace />} />
           <Route path="submissions" element={<Submissions />} />
           <Route path="stock" element={<ItemsManager key="stock" section="stock_collection" title="Stock Cabinetry — Door Styles & Colors" childSection="stock_item" />} />
-          <Route path="stock-items" element={<ItemsManager key="stock_all" section="stock_item" title="Stock Cabinetry Items (shared by every collection)" />} />
-          <Route path="stock/:parentId" element={<ItemsManager key="stock_item" section="stock_item" title="Collection Items" back="/admin/stock" />} />
-          <Route path="door-profiles" element={<ItemsManager key="dp" section="door_profile" title="Custom — Door Profiles" />} />
-          <Route path="paints" element={<ItemsManager key="pa" section="paint" title="Custom — Paints" />} />
-          <Route path="stains" element={<ItemsManager key="st" section="stain" title="Custom — Stains" />} />
-          <Route path="countertops" element={<ItemsManager key="ct" section="countertop" title="Countertop Slabs" />} />
-          <Route path="flooring" element={<ItemsManager key="fl" section="flooring" title="Flooring Options" />} />
-          <Route path="gallery" element={<ItemsManager key="ga" section="gallery" title="Spaces We've Created" noText />} />
+          <Route path="stock/:parentId" element={<ItemsManager key="stock_item" section="stock_item" title="Door Style Items" back="/admin/stock" />} />
+          {LISTS.map(([url, section, title]) => <Route key={url} path={url} element={<ItemsManager key={url} section={section} title={title} />} />)}
+          <Route path="categories" element={<CategoriesEditor />} />
           <Route path="settings" element={<SettingsEditor />} />
         </Routes>
       </main>

@@ -8,20 +8,31 @@ prefetchCatalog()
 
 const StockCabinetry = lazy(() => import('./pages/StockCabinetry'))
 const CustomCabinetry = lazy(() => import('./pages/CustomCabinetry'))
-const Countertops = lazy(() => import('./pages/Countertops'))
-const Flooring = lazy(() => import('./pages/Flooring'))
+const CatalogPage = lazy(() => import('./pages/CatalogPage'))
+const ProductPage = lazy(() => import('./pages/ProductPage'))
 const Gallery = lazy(() => import('./pages/Gallery'))
 const Schedule = lazy(() => import('./pages/Schedule'))
 const About = lazy(() => import('./pages/About'))
 const Contact = lazy(() => import('./pages/Contact'))
-const Terms = lazy(() => import('./pages/Terms'))
-const MeasurementGuide = lazy(() => import('./pages/MeasurementGuide'))
-const Shipping = lazy(() => import('./pages/Shipping'))
-const FAQ = lazy(() => import('./pages/FAQ'))
+const TextPage = lazy(() => import('./pages/TextPage'))
 const Search = lazy(() => import('./pages/Search'))
 const Admin = lazy(() => import('./admin/Admin'))
 
 const Fallback = () => <div className="min-h-[60vh]" />
+
+// [url, page key (header colour + headline), catalogue section]
+const CATALOGS = [
+  ['countertops', 'countertops', 'countertop'],
+  ['flooring', 'flooring', 'flooring'],
+  ['backsplash', 'backsplash', 'backsplash'],
+]
+// [url, page key, site_settings key]
+const TEXT_PAGES = [
+  ['terms', 'terms', 'terms'],
+  ['faq', 'faq', 'faq'],
+  ['shipping', 'shipping', 'shipping'],
+  ['measurement-guide', 'measurement', 'measurementGuide'],
+]
 
 export default function App() {
   return (
@@ -33,16 +44,15 @@ export default function App() {
           <Route path="stock-cabinetry" element={<StockCabinetry />} />
           <Route path="stock-cabinetry/:id" element={<StockCabinetry />} />
           <Route path="custom-cabinetry" element={<CustomCabinetry />} />
-          <Route path="countertops" element={<Countertops />} />
-          <Route path="flooring" element={<Flooring />} />
+          {CATALOGS.flatMap(([url, page, section]) => [
+            <Route key={url} path={url} element={<CatalogPage page={page} section={section} />} />,
+            <Route key={`${url}/:id`} path={`${url}/:id`} element={<ProductPage page={page} section={section} />} />,
+          ])}
           <Route path="spaces-weve-created" element={<Gallery />} />
           <Route path="schedule" element={<Schedule />} />
           <Route path="about" element={<About />} />
           <Route path="contact" element={<Contact />} />
-          <Route path="terms" element={<Terms />} />
-          <Route path="measurement-guide" element={<MeasurementGuide />} />
-          <Route path="shipping" element={<Shipping />} />
-          <Route path="faq" element={<FAQ />} />
+          {TEXT_PAGES.map(([url, page, key]) => <Route key={url} path={url} element={<TextPage key={url} page={page} settingsKey={key} />} />)}
           <Route path="search" element={<Search />} />
           <Route path="*" element={<div className="py-32 text-center font-serif text-3xl">Page not found</div>} />
         </Route>

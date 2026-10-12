@@ -3,7 +3,7 @@
 create table if not exists catalog_items (
   id uuid primary key default gen_random_uuid(),
   section text not null check (section in
-    ('stock_collection','stock_item','door_profile','paint','stain','countertop','flooring','gallery')),
+    ('stock_collection','stock_item','door_profile','paint','stain','melamine','countertop','flooring','backsplash','gallery')),
   parent_id uuid references catalog_items(id) on delete cascade, -- stock_item -> stock_collection
   name text not null default '',
   description text,
@@ -12,6 +12,9 @@ create table if not exists catalog_items (
   sku text,        -- stock_item
   size text,       -- stock_item, e.g. 30"W x 34.5"H x 24"D
   style text,      -- stock_collection: Flat Panel / Shaker / Double Shaker / Slim Shaker / Raised Panel
+  specs jsonb not null default '[]'::jsonb,   -- [["Size","127 x 64 (Jumbo)"], ...]
+  images jsonb not null default '[]'::jsonb,  -- extra photo URLs (scroll gallery)
+  featured boolean not null default false,    -- show in the Home page scroll bar
   sort_order int not null default 0,
   published boolean not null default true,
   created_at timestamptz not null default now()
