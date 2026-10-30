@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { DUMMY_ITEMS, DUMMY_HERO, DUMMY_IMAGES } from './dummy'
-import { PAGES, DEFAULT_CATEGORIES, DEFAULT_STOCK_SPECS } from './catalog'
+import { PAGES, DEFAULT_CATEGORIES, DEFAULT_STOCK_SPECS, DEFAULT_CUSTOM_TABS } from './catalog'
 
 const getClient = () => import('./supabase').then((m) => m.supabase)
 
@@ -20,6 +20,7 @@ export const DEFAULT_SETTINGS = {
   // flat `<page>_title` / `<page>_subtitle` keys, edited in Admin → Site Content
   pages: Object.fromEntries(Object.entries(PAGES).flatMap(([k, p]) => [[`${k}_title`, p.title], [`${k}_subtitle`, p.subtitle]])),
   categories: DEFAULT_CATEGORIES,
+  customTabs: { tabs: DEFAULT_CUSTOM_TABS },
   stockSpecs: { rows: DEFAULT_STOCK_SPECS },
   about: {
     heading: 'Thoughtful Design Begins Before Construction.',
@@ -31,7 +32,7 @@ export const DEFAULT_SETTINGS = {
   },
   contact: { phone: '702-418-2018', email: '', address: '', hours: 'Monday - Friday\n9:00am - 5:00pm\nAlso by appointment', instagram: '', linkedin: '' },
   terms: { body: 'Terms and Conditions will be published here soon.' },
-  measurementGuide: { body: 'Our measurement guide will be published here soon. In the meantime, request a consultation and we will measure your space for you.', pdf_url: '' },
+  measurementGuide: { body: 'Our measurement guide will be published here soon. In the meantime, request a consultation and we will measure your space for you.', pdf_url: '', image_url: '' },
   shipping: { body: 'Shipment & delivery information will be published here soon.' },
   faq: { body: 'Frequently asked questions will be published here soon.' },
 }
@@ -48,10 +49,14 @@ async function fetchItems(section, parentId) {
     return DUMMY_ITEMS.filter((i) => i.section === section && (!parentId || i.parent_id === parentId || i.parent_id === null))
   const supabase = await getClient()
   if (!supabase) return []
-  let q = supabase.from('catalog_items').select('*').eq('section', section).eq('published', true)
-  // stock items with no parent are shared by every collection
-  if (parentId) q = q.or(`parent_id.eq.${parentId},parent_id.is.null`)
-  const { data, error } = await q.order('sort_order').order('created_at')
+  const query = (parent) => {
+    let q = supabase.from('catalog_items').select('*').eq('section', section).eq('published', true)
+    if (parent !== undefined) q = parent ? q.eq('parent_id', parent) : q.is('parent_id', null)
+    return q.order('sort_order').order('created_at')
+  }
+  // A door style shows its own items; one with none yet falls back to the Default Items list.
+  let { data, error } = await query(parentId || undefined)
+  if (!error && parentId && !data.length) ({ data, error } = await query(null))
   if (error) throw error
   return data
 }
@@ -112,7 +117,7 @@ export function clearCache() {
 
 /** Warm the cache for the main catalogue pages once the browser is idle. */
 export function prefetchCatalog() {
-  const run = () => ['stock_collection', 'door_profile', 'paint', 'stain', 'melamine', 'countertop', 'flooring', 'backsplash'].forEach((sec) =>
+  const run = () => ['stock_collection', ...DEFAULT_CUSTOM_TABS.map((t) => t.key), 'countertop', 'flooring', 'backsplash'].forEach((sec) =>
     fetchItems(sec).then((d) => { cache.set(`${sec}:`, d); writeLS(`${sec}:`, d) }).catch(() => {}))
   ;(window.requestIdleCallback || ((f) => setTimeout(f, 1500)))(run)
 }
@@ -125,7 +130,10 @@ export async function searchItems(q) {
   const supabase = await getClient()
   if (!supabase) return []
   const { data, error } = await supabase.from('catalog_items').select('*')
-    .eq('published', true).ilike('name', `%${term.replace(/[%_,()]/g, ' ')}%`).order('sort_order').limit(60)
+    .eq('published', true).ilike('name', `%${term.replace(/[%_,()]/g, ' ')}%`)
+    // every door style has its own copy of each stock item — list each item once (the default)
+    .or('section.neq.stock_item,parent_id.is.null')
+    .order('sort_order').limit(60)
   if (error) throw error
   return data
 }

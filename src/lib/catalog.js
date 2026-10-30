@@ -20,6 +20,12 @@ export const PAGES = {
   terms: { title: 'Terms and Conditions', subtitle: '', bg: '#D8C8B4' },
 }
 
+// "Add usual rows" for a stock door style's specs (client notes 3)
+const STOCK_SPEC_ROWS = [
+  'Box Material', 'Box Interior', 'Box Exterior', 'Box Face Frame', 'Door Material',
+  'Door Style', 'Door Hinges', 'Drawer Glides', 'Drawer Material', 'Shelves',
+]
+
 const FLOORING_SPECS = [
   'Collection', 'Color', 'SKU', 'Species', 'Thickness', 'Plank Width', 'Plank Length',
   'Plank Color Variation', 'Style', 'Finish', 'Installation', 'Coverage', 'Warranty',
@@ -28,22 +34,46 @@ const FLOORING_SPECS = [
 /**
  * Every catalogue section.
  *  name      – public label (search results)       admin – admin menu label
- *  allTab    – category tabs start with "All"       rail  – can appear in a Home page scroll bar
- *  path      – where an item opens on the site      specs – default spec labels for new items
- *  gallery   – item can have extra photos        detail – has its own detail page
+ *  allTab    – category tabs start with "All" (default yes)
+ *  rail      – can appear in a Home page scroll bar
+ *  path      – where an item opens on the site      specs – usual spec rows for new items
+ *  gallery   – item can have extra photos           detail – has its own detail page
  */
 export const SECTIONS = {
-  stock_collection: { name: 'Stock Cabinetry', admin: 'Stock — Door Styles', allTab: true, rail: true, gallery: true, specs: [], path: (it) => `/stock-cabinetry/${it.id}` },
-  stock_item: { name: 'Stock Cabinetry Item', admin: 'Stock — Items', path: () => '/stock-cabinetry' },
+  stock_collection: { name: 'Stock Cabinetry', admin: 'Stock — Door Styles', rail: true, gallery: true, specs: STOCK_SPEC_ROWS, path: (it) => `/stock-cabinetry/${it.id}` },
+  stock_item: { name: 'Stock Cabinetry Item', admin: 'Stock — Default Items', allTab: false, path: (it) => (it.parent_id ? `/stock-cabinetry/${it.parent_id}` : '/stock-cabinetry') },
   door_profile: { name: 'Door Profile', admin: 'Door Profiles', rail: true, path: () => '/custom-cabinetry?tab=door_profile' },
   paint: { name: 'Paint', admin: 'Paints', path: () => '/custom-cabinetry?tab=paint' },
-  stain: { name: 'Stain', admin: 'Stains', allTab: true, path: () => '/custom-cabinetry?tab=stain' },
+  stain: { name: 'Stain', admin: 'Stains', path: () => '/custom-cabinetry?tab=stain' },
   melamine: { name: 'Textured Melamine', admin: 'Textured Melamine', path: () => '/custom-cabinetry?tab=melamine' },
   countertop: { detail: true, name: 'Countertop', admin: 'Countertops', rail: true, gallery: true, specs: ['Size', 'Texture', 'Thickness'], path: (it) => `/countertops/${it.id}` },
   flooring: { detail: true, name: 'Flooring', admin: 'Flooring', rail: true, gallery: true, specs: FLOORING_SPECS, path: (it) => `/flooring/${it.id}` },
   backsplash: { detail: true, name: 'Backsplash', admin: 'Backsplash', rail: true, gallery: true, specs: ['Size', 'Material', 'Finish', 'Thickness'], path: (it) => `/backsplash/${it.id}` },
   gallery: { name: 'Spaces We’ve Created', admin: 'Spaces Gallery', noCategories: true, path: () => '/spaces-weve-created' },
 }
+
+/**
+ * Custom Cabinetry main tabs, in order. Each is its own section; the client can add more in
+ * Admin → Categories (new ones get a `custom_…` key). Stored in site_settings "customTabs".
+ */
+export const DEFAULT_CUSTOM_TABS = [
+  { key: 'door_profile', label: 'Door Profiles' },
+  { key: 'paint', label: 'Paints' },
+  { key: 'stain', label: 'Stains' },
+  { key: 'melamine', label: 'Textured Melamine' },
+  { key: 'custom_polymer_high_gloss', label: 'Polymer High-Gloss' },
+  { key: 'custom_polymer_velour_touch', label: 'Polymer Velour Touch' },
+  { key: 'custom_master_oak', label: 'Master Oak' },
+]
+
+const titleCase = (key) => key.replace(/^custom_/, '').split('_').map((w) => w[0]?.toUpperCase() + w.slice(1)).join(' ')
+
+/** Section settings, including Custom Cabinetry tabs the client created (pass its label if known). */
+export const confOf = (section, label) =>
+  SECTIONS[section] || {
+    name: label || titleCase(section), admin: label || titleCase(section),
+    path: () => `/custom-cabinetry?tab=${section}`,
+  }
 
 /** Default category tabs per section (Admin → Categories can add, rename, remove, reorder). */
 export const DEFAULT_CATEGORIES = {
@@ -77,27 +107,33 @@ const STYLE_BY_NAME = {
   'Classic Brown': 'Raised Panel', 'Classic Cream': 'Raised Panel', 'Traditional White': 'Raised Panel',
 }
 export const catField = (section) => (section === 'stock_collection' ? 'style' : 'category')
-export const catOf = (section, item) =>
+
+// An item can sit in several tabs (e.g. a door profile that is both "Maple" and "Polymer"):
+// `category` holds them joined with "|".
+export const CAT_SEP = '|'
+export const catsOf = (section, item) =>
   section === 'stock_collection'
-    ? item.style || STYLE_BY_NAME[item.name] || 'Shaker'
-    : item.category || ''
+    ? [item.style || STYLE_BY_NAME[item.name] || 'Shaker']
+    : (item.category || '').split(CAT_SEP).map((c) => c.trim()).filter(Boolean)
+export const joinCats = (cats) => [...new Set(cats.map((c) => c.trim()).filter(Boolean))].join(CAT_SEP)
+
+const hasAll = (section) => confOf(section).allTab !== false
 
 /**
- * Tabs for a section's items. Items whose category isn't in the list go under "All"
- * when the section has one, otherwise under a trailing "Other" tab, so nothing published
- * ever silently disappears.
+ * Tabs for a section's items. Items in none of the listed tabs show under "All"; sections
+ * without an "All" tab get a trailing "Other" tab instead, so nothing published disappears.
  */
 export function tabsFor(section, items, list) {
-  const conf = SECTIONS[section] || {}
   if (!list?.length) return []
-  const orphan = (items || []).some((i) => !list.includes(catOf(section, i)))
-  return [...(conf.allTab ? ['All'] : []), ...list, ...(orphan && !conf.allTab ? ['Other'] : [])]
+  const all = hasAll(section)
+  const orphan = (items || []).some((i) => !catsOf(section, i).some((c) => list.includes(c)))
+  return [...(all ? ['All'] : []), ...list, ...(orphan && !all ? ['Other'] : [])]
 }
 
 export function inTab(section, list, tab, item) {
   if (!tab || tab === 'All') return true
-  const c = catOf(section, item)
-  return tab === 'Other' ? !list.includes(c) : c === tab
+  const cats = catsOf(section, item)
+  return tab === 'Other' ? !cats.some((c) => list.includes(c)) : cats.includes(tab)
 }
 
 /** Home page scroll bars: the items ticked "Show on Home page", else the first 24 in order. */

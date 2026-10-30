@@ -17,7 +17,7 @@ const GROUPS = {
   stockSpecs: ['Stock Cabinetry — standard specs', [['rows', 'Shown on the Stock page and every door style (unless the door style has its own specs)', 'specs']]],
   about: ['About Us', [['heading', 'Heading', 'text'], ['title', 'Professional title', 'text'], ['image_url', 'Photo', 'image'], ['body', 'Bio', 'textarea'], ['closing', 'Closing line (also used on the Home page)', 'text']]],
   contact: ['Contact info & footer', [['phone', 'Phone', 'text'], ['email', 'Public email', 'text'], ['address', 'Address', 'textarea'], ['hours', 'Business hours (each line shows on its own line)', 'textarea'], ['instagram', 'Instagram URL', 'text'], ['linkedin', 'LinkedIn URL', 'text']]],
-  measurementGuide: ['Measurement Guide', [['pdf_url', 'Printable PDF (customers get a “Download” button)', 'file'], ['body', 'Page text', 'rich']]],
+  measurementGuide: ['Measurement Guide', [['pdf_url', 'Printable PDF (customers get a “Measurement Guide” download button)', 'file'], ['image_url', 'Picture of the guide (shown on the left)', 'image'], ['body', 'Page text (shown on the right)', 'rich']]],
   shipping: ['Shipment & Delivery Information', [['body', 'Content', 'rich']]],
   faq: ["FAQ's", [['body', 'Content', 'rich']]],
   terms: ['Terms and Conditions', [['body', 'Content', 'rich']]],

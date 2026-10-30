@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { searchItems } from '../lib/api'
-import { SECTIONS, thumb } from '../lib/catalog'
+import { confOf, thumb } from '../lib/catalog'
 import { PageHeader, Section, Grid } from '../components/ui'
 
 export default function Search() {
@@ -25,7 +25,7 @@ export default function Search() {
         ) : (
           <Grid>
             {results.map((it) => {
-              const conf = SECTIONS[it.section] || { name: '', path: () => '/' }
+              const conf = confOf(it.section)
               return (
                 <Link key={it.id} to={conf.path(it)} className="group block">
                   <div className="aspect-square overflow-hidden">

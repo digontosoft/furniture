@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useItems } from '../lib/api'
-import { PAGES, photosOf } from '../lib/catalog'
+import { PAGES, photosOf, catsOf } from '../lib/catalog'
 import { Section, PhotoViewer, SpecsList } from '../components/ui'
 
 /**
@@ -22,6 +22,7 @@ export default function ProductPage({ page, section }) {
     return <Section className="min-h-[50vh] text-center">{back}<p className="mt-8 text-muted">This item is no longer available.</p></Section>
 
   const photos = photosOf(item)
+  const cats = catsOf(section, item).join(' · ')
 
   if (section === 'countertop')
     return (
@@ -29,7 +30,7 @@ export default function ProductPage({ page, section }) {
         {back}
         <div className="mt-6"><PhotoViewer photos={photos} alt={item.name} aspect="aspect-video" /></div>
         <h1 className="mt-10 text-3xl font-semibold uppercase tracking-wide md:text-4xl">{item.name}</h1>
-        {item.category && <p className="mt-1 text-sm uppercase tracking-[0.15em] text-muted">{item.category}</p>}
+        {cats && <p className="mt-1 text-sm uppercase tracking-[0.15em] text-muted">{cats}</p>}
         {item.description && (
           <div className="mt-8">
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.15em] text-ink/80">About this stone</h2>
@@ -47,7 +48,7 @@ export default function ProductPage({ page, section }) {
         <PhotoViewer photos={photos} alt={item.name} aspect="aspect-[8/7]" />
         <div>
           <h1 className="text-4xl font-semibold md:text-5xl">{item.name}</h1>
-          {item.category && <p className="mt-1 text-sm uppercase tracking-[0.15em] text-muted">{item.category}</p>}
+          {cats && <p className="mt-1 text-sm uppercase tracking-[0.15em] text-muted">{cats}</p>}
           {item.description && <p className="mt-6 whitespace-pre-line text-lg leading-relaxed text-ink/75">{item.description}</p>}
           <div className="mt-8"><SpecsList rows={item.specs} variant="table" /></div>
         </div>

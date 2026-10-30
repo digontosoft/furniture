@@ -2,13 +2,14 @@
 
 create table if not exists catalog_items (
   id uuid primary key default gen_random_uuid(),
-  section text not null check (section in
-    ('stock_collection','stock_item','door_profile','paint','stain','melamine','countertop','flooring','backsplash','gallery')),
-  parent_id uuid references catalog_items(id) on delete cascade, -- stock_item -> stock_collection
+  -- stock_collection, stock_item, door_profile, paint, stain, melamine, countertop, flooring,
+  -- backsplash, gallery, plus custom_* tabs added from the admin panel
+  section text not null check (section ~ '^[a-z][a-z0-9_]*$'),
+  parent_id uuid references catalog_items(id) on delete cascade, -- stock_item -> its door style (null = shared list)
   name text not null default '',
   description text,
   image_url text,
-  category text,   -- stock_item: Base / Wall / Tall / Vanity ...
+  category text,   -- tab(s); several are joined with "|" (e.g. "Maple|Polymer")
   sku text,        -- stock_item
   size text,       -- stock_item, e.g. 30"W x 34.5"H x 24"D
   style text,      -- stock_collection: Flat Panel / Shaker / Double Shaker / Slim Shaker / Raised Panel

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
-import { NavLink, Route, Routes, Navigate } from 'react-router-dom'
+import { NavLink, Route, Routes, Navigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useSettings } from '../lib/api'
+import { DEFAULT_CUSTOM_TABS } from '../lib/catalog'
 import ItemsManager from './ItemsManager'
 import SettingsEditor from './SettingsEditor'
 import CategoriesEditor from './CategoriesEditor'
@@ -30,37 +32,43 @@ function Login() {
   )
 }
 
-const MENU = [
+// [url, label] — the Custom Cabinetry group is inserted after the Stock entries
+const MENU_TOP = [
   ['submissions', 'Requests & Messages'],
   ['stock', 'Stock — Door Styles'],
-  ['stock-items', 'Stock — Items'],
-  ['door-profiles', 'Door Profiles'],
-  ['paints', 'Paints'],
-  ['stains', 'Stains'],
-  ['melamine', 'Textured Melamine'],
+  ['stock-items', 'Stock — Default Items'],
+]
+const MENU_BOTTOM = [
   ['countertops', 'Countertops'],
   ['flooring', 'Flooring'],
   ['backsplash', 'Backsplash'],
   ['gallery', "Spaces We've Created"],
-  ['categories', 'Categories (tabs)'],
+  ['categories', 'Tabs & Categories'],
   ['settings', 'Site Content'],
 ]
 
 // [url, section, page title]
 const LISTS = [
-  ['stock-items', 'stock_item', 'Stock Cabinetry Items (shared by every door style)'],
-  ['door-profiles', 'door_profile', 'Custom — Door Profiles'],
-  ['paints', 'paint', 'Custom — Paints'],
-  ['stains', 'stain', 'Custom — Stains'],
-  ['melamine', 'melamine', 'Custom — Textured Melamine'],
+  ['stock-items', 'stock_item', 'Stock — Default Items (template for new door styles)'],
   ['countertops', 'countertop', 'Countertops'],
   ['flooring', 'flooring', 'Flooring'],
   ['backsplash', 'backsplash', 'Backsplash'],
   ['gallery', 'gallery', "Spaces We've Created"],
 ]
 
+/** /admin/custom/:section — one Custom Cabinetry main tab (built-in or added by the client). */
+function CustomTab({ tabs }) {
+  const { section } = useParams()
+  const label = tabs.find((t) => t.key === section)?.label || section
+  return <ItemsManager key={section} section={section} title={`Custom — ${label}`} />
+}
+
+const menuLink = ({ isActive }) => `whitespace-nowrap rounded-lg px-3 py-2 text-sm ${isActive ? 'bg-white/15' : 'text-white/70 hover:bg-white/10'}`
+
 export default function Admin() {
   const [session, setSession] = useState(undefined)
+  const settings = useSettings()
+  const customTabs = settings.customTabs?.tabs?.length ? settings.customTabs.tabs : DEFAULT_CUSTOM_TABS
 
   useEffect(() => {
     if (!supabase) return
@@ -79,12 +87,11 @@ export default function Admin() {
       <aside className="shrink-0 bg-ink p-4 text-white md:w-60">
         <p className="mb-4 font-serif text-xl">Admin Panel</p>
         <nav className="flex gap-1 overflow-x-auto md:flex-col">
-          {MENU.map(([to, label]) => (
-            <NavLink key={to} to={`/admin/${to}`} end
-              className={({ isActive }) => `whitespace-nowrap rounded-lg px-3 py-2 text-sm ${isActive ? 'bg-white/15' : 'text-white/70 hover:bg-white/10'}`}>
-              {label}
-            </NavLink>
-          ))}
+          {MENU_TOP.map(([to, label]) => <NavLink key={to} to={`/admin/${to}`} end className={menuLink}>{label}</NavLink>)}
+          <p className="hidden px-3 pb-1 pt-3 text-[11px] uppercase tracking-widest text-white/40 md:block">Custom Cabinetry</p>
+          {customTabs.map((t) => <NavLink key={t.key} to={`/admin/custom/${t.key}`} className={(a) => `${menuLink(a)} md:pl-6`}>{t.label}</NavLink>)}
+          <span className="hidden md:block md:pt-2" />
+          {MENU_BOTTOM.map(([to, label]) => <NavLink key={to} to={`/admin/${to}`} end className={menuLink}>{label}</NavLink>)}
         </nav>
         <div className="mt-4 flex gap-4 text-xs text-white/60">
           <a href="/" target="_blank" className="hover:text-white">View site ↗</a>
@@ -98,6 +105,7 @@ export default function Admin() {
           <Route path="stock" element={<ItemsManager key="stock" section="stock_collection" title="Stock Cabinetry — Door Styles & Colors" childSection="stock_item" />} />
           <Route path="stock/:parentId" element={<ItemsManager key="stock_item" section="stock_item" title="Door Style Items" back="/admin/stock" />} />
           {LISTS.map(([url, section, title]) => <Route key={url} path={url} element={<ItemsManager key={url} section={section} title={title} />} />)}
+          <Route path="custom/:section" element={<CustomTab tabs={customTabs} />} />
           <Route path="categories" element={<CategoriesEditor />} />
           <Route path="settings" element={<SettingsEditor />} />
         </Routes>

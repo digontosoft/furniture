@@ -60,8 +60,9 @@ export default function Home() {
       {/* SCROLL BARS */}
       <section className="bg-sand">
         <div className="mx-auto max-w-7xl space-y-14 px-5 py-16 md:py-20">
-          <Rail title="Stock Cabinetry" to="/stock-cabinetry" section="stock_collection" aspect="aspect-[52/100]" width="w-36 md:w-48" />
-          <Rail title="Custom Cabinetry" to="/custom-cabinetry" section="door_profile" aspect="aspect-[4/5]" width="w-44 md:w-60" />
+          {/* door photos vary slightly in shape (0.51–0.57); `cover` in one fixed shape makes every tile the same size */}
+          <Rail title="Stock Cabinetry" to="/stock-cabinetry" section="stock_collection" aspect="aspect-[53/100]" width="w-36 md:w-48" fit="cover" />
+          <Rail title="Custom Cabinetry" to="/custom-cabinetry" section="door_profile" aspect="aspect-[4/5]" width="w-44 md:w-60" fit="cover" />
           <Rail title="Countertops" to="/countertops" section="countertop" aspect="aspect-square" width="w-44 md:w-56" fit="cover" />
           <Rail title="Flooring" to="/flooring" section="flooring" aspect="aspect-square" width="w-44 md:w-56" fit="cover" />
           <Rail title="Backsplash" to="/backsplash" section="backsplash" aspect="aspect-square" width="w-44 md:w-56" fit="cover" />

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useItems, useSettings } from '../lib/api'
-import { PAGES, SECTIONS, tabsFor, inTab, thumb } from '../lib/catalog'
+import { PAGES, confOf, tabsFor, inTab, thumb } from '../lib/catalog'
 
 /** Coloured page header; `page` picks the colour and the admin-editable headline. */
 export function PageHeader({ page, title, subtitle }) {
@@ -116,7 +116,7 @@ export function ItemsGrid({ section, parentId, fit = 'cover', bordered = false, 
   const { items, loading, error } = useItems(section, parentId)
   const { tabs, active, setActive, shown } = useTabs(section, items)
   const [zoomed, setZoomed] = useState(null)
-  const conf = SECTIONS[section] || {}
+  const conf = confOf(section)
   const link = conf.detail
   if (loading) return <Skeleton />
   if (error) return <p className="text-center text-red-700">Could not load content.</p>
@@ -214,7 +214,8 @@ const inline = (text) =>
   text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
     /^\*\*[^*]+\*\*$/.test(part) ? <strong key={i} className="font-semibold text-ink">{part.slice(2, -2)}</strong> : part)
 
-const BULLET = /^\s*[-•*]\s+/
+// "- item", "• item", "* item" and also "*item" (the client types bullets without a space)
+const BULLET = /^\s*(?:[-•·]\s+|[*∗](?!\*)\s*)/
 
 /**
  * Admin-written long text (Terms, FAQ, …). Blank lines split paragraphs; a short line on its
@@ -229,9 +230,13 @@ export function RichText({ text }) {
         if (!b.includes('\n') && (/^#{1,3}\s+/.test(b) || /^\d+\.\s+\S.{0,90}$/.test(b)))
           return <h2 key={i} className="pt-4 font-sans text-lg font-bold text-ink">{b.replace(/^#{1,3}\s+/, '')}</h2>
         // split the block into runs of plain lines and runs of bullet lines
+        const lines = b.split('\n')
+        // a list whose first item lost its bullet ("Incorrect information…\n*Contractor…"):
+        // treat that first line as a bullet too, unless it reads as an intro ("…including:")
+        const looseFirst = lines.length > 2 && !BULLET.test(lines[0]) && !/[:：]\s*$/.test(lines[0]) && lines.slice(1).every((l) => BULLET.test(l))
         const runs = []
-        for (const line of b.split('\n')) {
-          const isBullet = BULLET.test(line)
+        for (const [n, line] of lines.entries()) {
+          const isBullet = BULLET.test(line) || (looseFirst && n === 0)
           const last = runs[runs.length - 1]
           if (last && last.bullet === isBullet) last.lines.push(line)
           else runs.push({ bullet: isBullet, lines: [line] })
