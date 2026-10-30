@@ -22,8 +22,14 @@ if (authErr) throw authErr
 
 const isCandidate = (u) => typeof u === 'string' && u.includes('/object/public/media/') && !u.includes('/media/seed/') && !u.includes('/media/files/') && !u.endsWith('.full.webp')
 
-const { data: items, error } = await sb.from('catalog_items').select('*')
-if (error) throw error
+// PostgREST returns at most 1000 rows per request — page through them
+const items = []
+for (let from = 0; ; from += 1000) {
+  const { data, error } = await sb.from('catalog_items').select('*').order('id').range(from, from + 999)
+  if (error) throw error
+  items.push(...data)
+  if (data.length < 1000) break
+}
 const { data: settings } = await sb.from('site_settings').select('*')
 
 const urls = new Set()

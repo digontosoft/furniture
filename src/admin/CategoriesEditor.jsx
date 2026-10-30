@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { clearCache, DEFAULT_SETTINGS } from '../lib/api'
-import { DEFAULT_CATEGORIES, DEFAULT_CUSTOM_TABS, confOf, catField, catsOf, joinCats } from '../lib/catalog'
+import { DEFAULT_CATEGORIES, DEFAULT_CUSTOM_TABS, confOf, catField, catsOf, joinCats, CAT_SEP } from '../lib/catalog'
+import { selectAll } from './db'
 
 /**
  * Admin → Tabs & Categories
@@ -15,9 +16,10 @@ export default function CategoriesEditor() {
   const [counts, setCounts] = useState({}) // { section: { name: n, '*': total } }
 
   async function load() {
-    const [{ data: rows }, { data: items }] = await Promise.all([
+    const [{ data: rows }, items] = await Promise.all([
       supabase.from('site_settings').select('key,value').in('key', ['categories', 'customTabs']),
-      supabase.from('catalog_items').select('section,name,category,style'),
+      // stock items: count the Default Items list only (each door style holds a copy of it)
+      selectAll((q) => q.or('section.neq.stock_item,parent_id.is.null'), 'section,name,category,style').catch(() => []),
     ])
     const get = (k) => rows?.find((r) => r.key === k)?.value
     setSaved({ ...DEFAULT_SETTINGS.categories, ...(get('categories') || {}) })
@@ -128,16 +130,24 @@ function SectionTabs({ section, title, initial, counts, all, onSaved }) {
     const renames = rows.filter((r) => r.from && r.from !== r.name.trim()).map((r) => [r.from, r.name.trim()])
     if (renames.length) {
       const field = catField(section)
-      const { data: items, error } = await supabase.from('catalog_items').select(`id,${field}`).eq('section', section)
-      if (error) { setBusy(false); return setMsg(error.message) }
       const map = Object.fromEntries(renames)
-      for (const it of items) {
-        const before = field === 'style' ? [it.style || ''] : catsOf(section, it)
-        if (!before.some((c) => map[c])) continue
-        const after = before.map((c) => map[c] || c)
-        const { error: e } = await supabase.from('catalog_items').update({ [field]: field === 'style' ? after[0] : joinCats(after) }).eq('id', it.id)
-        if (e) { setBusy(false); return setMsg(e.message) }
-      }
+      try {
+        // items in just that one tab: one bulk update per rename (covers every door style's copy)
+        for (const [from, to] of renames) {
+          const { error } = await supabase.from('catalog_items').update({ [field]: to }).eq('section', section).eq(field, from)
+          if (error) throw error
+        }
+        // items in several tabs ("Maple|Polymer"): fix each one
+        if (field === 'category') {
+          const multi = await selectAll((q) => q.eq('section', section).like('category', `%${CAT_SEP}%`), 'id,category')
+          for (const it of multi) {
+            const before = catsOf(section, it)
+            if (!before.some((c) => map[c])) continue
+            const { error } = await supabase.from('catalog_items').update({ category: joinCats(before.map((c) => map[c] || c)) }).eq('id', it.id)
+            if (error) throw error
+          }
+        }
+      } catch (x) { setBusy(false); return setMsg(x.message) }
     }
     const { error } = await supabase.from('site_settings').upsert({ key: 'categories', value: { ...all, [section]: names } })
     setBusy(false)

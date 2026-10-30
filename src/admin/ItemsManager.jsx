@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { clearCache, useSettings } from '../lib/api'
 import { confOf, catField, catsOf, joinCats, thumb } from '../lib/catalog'
 import { ImageField, ImagesField, SpecsEditor } from './fields'
+import { selectAll } from './db'
 
 const NO_CAT = '(No category)'
 
@@ -20,6 +21,14 @@ const copyOf = (it, parent_id) => ({
   category: it.category || '', sku: it.sku || '', size: it.size || '', sort_order: it.sort_order ?? 0,
   published: it.published, specs: it.specs || [], images: it.images || [],
 })
+
+// run `fn` on the ids 100 at a time (a long id list would not fit in one request URL)
+async function inChunks(ids, fn) {
+  for (let i = 0; i < ids.length; i += 100) {
+    const { error } = await fn(ids.slice(i, i + 100))
+    if (error) throw error
+  }
+}
 
 async function insertMany(rows) {
   for (let i = 0; i < rows.length; i += 500) {
@@ -62,9 +71,9 @@ export default function ItemsManager({ section, title, childSection, back }) {
       setStyles(s || [])
     }
     if (childSection) {
-      const { data: kids } = await supabase.from('catalog_items').select('parent_id').eq('section', childSection).not('parent_id', 'is', null)
+      const kids = await selectAll((q) => q.eq('section', childSection).not('parent_id', 'is', null), 'parent_id').catch(() => [])
       const c = {}
-      for (const k of kids || []) c[k.parent_id] = (c[k.parent_id] || 0) + 1
+      for (const k of kids) c[k.parent_id] = (c[k.parent_id] || 0) + 1
       setOwnCounts(c)
     }
   }, [section, parentId, isStockItems, childSection])
@@ -142,9 +151,8 @@ export default function ItemsManager({ section, title, childSection, back }) {
     // a new door style starts with a copy of the Default Items, ready to edit (client request)
     if (!id && section === 'stock_collection') {
       setStatus('Adding the default items to the new door style…')
-      const { data: defaults, error: e } = await supabase.from('catalog_items').select('*').eq('section', 'stock_item').is('parent_id', null)
       try {
-        if (e) throw e
+        const defaults = await selectAll((q) => q.eq('section', 'stock_item').is('parent_id', null))
         await insertMany(defaults.map((it) => copyOf(it, savedRow.id)))
         setStatus(`New door style added with ${defaults.length} default items ✓`)
       } catch (x) { setErr(`The door style was added, but copying the default items failed: ${explain(x)}. Open its Items page and use “Copy items here”.`); setStatus('') }
@@ -178,21 +186,18 @@ export default function ItemsManager({ section, title, childSection, back }) {
   }
   const copyTo = (targets) => run(`Copying ${selected.length} items to ${targets.length} door style(s)…`,
     () => insertMany(targets.flatMap((pid) => selected.map((it) => copyOf(it, pid === 'shared' ? null : pid)))))
-  const moveTo = (target) => run(`Moving ${selected.length} items…`, async () => {
-    const { error } = await supabase.from('catalog_items').update({ parent_id: target === 'shared' ? null : target }).in('id', selected.map((r) => r.id))
-    if (error) throw error
-  })
-  const deleteSelected = () => confirm(`Delete ${selected.length} selected items?`) && run(`Deleting ${selected.length} items…`, async () => {
-    const { error } = await supabase.from('catalog_items').delete().in('id', selected.map((r) => r.id))
-    if (error) throw error
-  })
+  const ids = () => selected.map((r) => r.id)
+  const moveTo = (target) => run(`Moving ${selected.length} items…`, () =>
+    inChunks(ids(), (chunk) => supabase.from('catalog_items').update({ parent_id: target === 'shared' ? null : target }).in('id', chunk)))
+  const deleteSelected = () => confirm(`Delete ${selected.length} selected items?`) && run(`Deleting ${selected.length} items…`, () =>
+    inChunks(ids(), (chunk) => supabase.from('catalog_items').delete().in('id', chunk)))
   async function copyFrom(source) {
-    let q = supabase.from('catalog_items').select('*').eq('section', 'stock_item')
-    q = source === 'shared' ? q.is('parent_id', null) : q.eq('parent_id', source)
-    const { data, error } = await q
-    if (error) return setErr(explain(error))
+    let data
+    try {
+      data = await selectAll((q) => (source === 'shared' ? q.eq('section', 'stock_item').is('parent_id', null) : q.eq('section', 'stock_item').eq('parent_id', source)))
+    } catch (x) { return setErr(explain(x)) }
     if (!data.length) return setErr('That list has no items to copy.')
-    run(`Copying ${data.length} items here…`, () => insertMany(data.map((it) => copyOf(it, parentId))))
+    run(`Copying ${data.length} items here…`, () => insertMany(data.sort((a, b) => a.sort_order - b.sort_order).map((it) => copyOf(it, parentId))))
   }
 
   const featuredCount = (rows || []).filter((r) => r.featured).length
