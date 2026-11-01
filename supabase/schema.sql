@@ -5,7 +5,8 @@ create table if not exists catalog_items (
   -- stock_collection, stock_item, door_profile, paint, stain, melamine, countertop, flooring,
   -- backsplash, gallery, plus custom_* tabs added from the admin panel
   section text not null check (section ~ '^[a-z][a-z0-9_]*$'),
-  parent_id uuid references catalog_items(id) on delete cascade, -- stock_item -> its door style (null = shared list)
+  parent_id uuid references catalog_items(id) on delete cascade, -- stock_item -> its door style (null = Default Items list)
+  source_id uuid references catalog_items(id) on delete set null, -- a door style's stock_item -> the Default item it was copied from
   name text not null default '',
   description text,
   image_url text,
@@ -22,6 +23,7 @@ create table if not exists catalog_items (
 );
 create index if not exists catalog_items_section_idx on catalog_items (section, sort_order);
 create index if not exists catalog_items_parent_idx on catalog_items (parent_id);
+create index if not exists catalog_items_source_idx on catalog_items (source_id);
 
 create table if not exists site_settings (
   key text primary key,

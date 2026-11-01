@@ -5,36 +5,16 @@ import { clearCache, useSettings } from '../lib/api'
 import { confOf, catField, catsOf, joinCats, thumb } from '../lib/catalog'
 import { ImageField, ImagesField, SpecsEditor } from './fields'
 import { selectAll } from './db'
+import { addToStyles, pushEdit, deleteWithCopies, pushOrder, inChunks, insertMany, copyOf } from './stockSync'
 
 const NO_CAT = '(No category)'
 
 function explain(error) {
   const m = error?.message || String(error)
   if (/section_check/i.test(m)) return `${m}. New Custom Cabinetry tabs need one database change — run supabase/migration_3.sql in the Supabase SQL Editor.`
+  if (/source_id/i.test(m)) return `${m}. Run supabase/migration_4.sql in the Supabase SQL Editor.`
   if (/column/i.test(m)) return `${m}. Run supabase/migration_2.sql in the Supabase SQL Editor.`
   return m
-}
-
-// copy of an item for another door style (no id / created_at)
-const copyOf = (it, parent_id) => ({
-  section: it.section, parent_id, name: it.name, description: it.description || '', image_url: it.image_url || '',
-  category: it.category || '', sku: it.sku || '', size: it.size || '', sort_order: it.sort_order ?? 0,
-  published: it.published, specs: it.specs || [], images: it.images || [],
-})
-
-// run `fn` on the ids 100 at a time (a long id list would not fit in one request URL)
-async function inChunks(ids, fn) {
-  for (let i = 0; i < ids.length; i += 100) {
-    const { error } = await fn(ids.slice(i, i + 100))
-    if (error) throw error
-  }
-}
-
-async function insertMany(rows) {
-  for (let i = 0; i < rows.length; i += 500) {
-    const { error } = await supabase.from('catalog_items').insert(rows.slice(i, i + 500))
-    if (error) throw error
-  }
 }
 
 /** Admin list for one catalogue section: tabs, drag to reorder, add / edit / hide / delete. */
@@ -44,6 +24,7 @@ export default function ItemsManager({ section, title, childSection, back }) {
   const field = catField(section)
   const list = useSettings().categories?.[section] || []
   const isStockItems = section === 'stock_item'
+  const isTemplate = isStockItems && !parentId // the Default Items list, which drives every door style
   const [rows, setRows] = useState(null)
   const rowsRef = useRef([])
   const [tab, setTab] = useState('All')
@@ -55,7 +36,7 @@ export default function ItemsManager({ section, title, childSection, back }) {
   const [styles, setStyles] = useState([]) // stock door styles (for item copy / move)
   const [ownCounts, setOwnCounts] = useState({}) // door style id → its own item count
   const [picked, setPicked] = useState(() => new Set())
-  const [bulk, setBulk] = useState(null) // 'copy' | 'move'
+  const [bulk, setBulk] = useState(false) // door-style picker for "Add to door styles"
 
   const put = (next) => { rowsRef.current = next; setRows(next) }
 
@@ -109,8 +90,12 @@ export default function ItemsManager({ section, title, childSection, back }) {
       const bad = res.find((x) => x.error)
       if (bad) { setErr(explain(bad.error)); setStatus(''); return }
     }
+    if (isTemplate) {
+      setStatus('Saving order for every door style…')
+      try { await pushOrder(changed.map(([r, n]) => [r.id, n])) } catch (x) { setErr(explain(x)); setStatus(''); return }
+    }
     clearCache()
-    setStatus('Order saved ✓')
+    setStatus(isTemplate ? 'Order saved for every door style ✓' : 'Order saved ✓')
   }
 
   const nudge = (r, d) => {
@@ -127,6 +112,7 @@ export default function ItemsManager({ section, title, childSection, back }) {
       [field]: list.includes(tab) ? tab : '',
       specs: section === 'stock_collection' ? [] : (conf.specs || []).map((t) => [t, '']),
       sort_order: max + 1,
+      addToAll: isTemplate,
     })
   }
 
@@ -143,11 +129,28 @@ export default function ItemsManager({ section, title, childSection, back }) {
     if (conf.gallery) payload.images = form.images || []
     if (conf.specs) payload.specs = (form.specs || []).map(([k, v]) => [k.trim(), v.trim()]).filter(([k]) => k)
     if (conf.rail) payload.featured = !!form.featured
+    const before = id && rowsRef.current.find((r) => r.id === id)
     const { data: savedRow, error } = id
-      ? await supabase.from('catalog_items').update(payload).eq('id', id).select('id').single()
-      : await supabase.from('catalog_items').insert(payload).select('id').single()
+      ? await supabase.from('catalog_items').update(payload).eq('id', id).select('*').single()
+      : await supabase.from('catalog_items').insert(payload).select('*').single()
     if (error) return setErr(explain(error))
+    const addToAll = form.addToAll
     setForm(null)
+    // the Default list drives every door style
+    if (isTemplate && before) {
+      setStatus('Updating this item in every door style…')
+      try {
+        const n = await pushEdit(id, before, savedRow)
+        setStatus(n ? `Saved — also updated in ${n} door style${n === 1 ? '' : 's'} ✓` : 'Saved ✓')
+      } catch (x) { setErr(`Saved here, but updating the door styles failed: ${explain(x)}`); setStatus('') }
+    }
+    if (isTemplate && !id && addToAll) {
+      setStatus('Adding this item to every door style…')
+      try {
+        const n = await addToStyles([savedRow], styles.map((s) => s.id))
+        setStatus(`Added — also added to ${n} door style${n === 1 ? '' : 's'} ✓`)
+      } catch (x) { setErr(`Added here, but adding it to the door styles failed: ${explain(x)}`); setStatus('') }
+    }
     // a new door style starts with a copy of the Default Items, ready to edit (client request)
     if (!id && section === 'stock_collection') {
       setStatus('Adding the default items to the new door style…')
@@ -169,9 +172,12 @@ export default function ItemsManager({ section, title, childSection, back }) {
 
   async function remove(row) {
     const kids = childSection ? ownCounts[row.id] || 0 : 0
-    if (!confirm(`Delete "${row.name || 'this image'}"?${kids ? ` Its ${kids} items will be deleted too.` : ''}`)) return
-    const { error } = await supabase.from('catalog_items').delete().eq('id', row.id)
-    if (error) return setErr(explain(error))
+    const where = isTemplate ? ' from the Default list and from every door style' : parentId && styleName ? ` from ${styleName} only` : ''
+    if (!confirm(`Delete "${row.name || 'this image'}"${where}?${kids ? ` Its ${kids} items will be deleted too.` : ''}`)) return
+    try {
+      if (isTemplate) await deleteWithCopies([row.id])
+      else { const { error } = await supabase.from('catalog_items').delete().eq('id', row.id); if (error) throw error }
+    } catch (x) { return setErr(explain(x)) }
     clearCache(); load()
   }
 
@@ -182,22 +188,29 @@ export default function ItemsManager({ section, title, childSection, back }) {
   async function run(label, fn) {
     setErr(''); setStatus(label)
     try { await fn(); clearCache(); setStatus(`${label.replace(/…$/, '')} — done ✓`) } catch (x) { setErr(explain(x)); setStatus('') }
-    setBulk(null); load()
+    setBulk(false); load()
   }
-  const copyTo = (targets) => run(`Copying ${selected.length} items to ${targets.length} door style(s)…`,
-    () => insertMany(targets.flatMap((pid) => selected.map((it) => copyOf(it, pid === 'shared' ? null : pid)))))
   const ids = () => selected.map((r) => r.id)
-  const moveTo = (target) => run(`Moving ${selected.length} items…`, () =>
-    inChunks(ids(), (chunk) => supabase.from('catalog_items').update({ parent_id: target === 'shared' ? null : target }).in('id', chunk)))
-  const deleteSelected = () => confirm(`Delete ${selected.length} selected items?`) && run(`Deleting ${selected.length} items…`, () =>
-    inChunks(ids(), (chunk) => supabase.from('catalog_items').delete().in('id', chunk)))
+  const copyTo = (targets) => run(`Adding ${selected.length} items to ${targets.length} door style(s)…`, async () => {
+    const n = await addToStyles(selected, targets)
+    if (!n) throw new Error('Those door styles already have these items — nothing was added.')
+  })
+  const deleteSelected = () =>
+    confirm(isTemplate
+      ? `Delete ${selected.length} items from the Default list and from every door style?`
+      : `Delete ${selected.length} items from ${styleName || 'this door style'} only?`)
+    && run(`Deleting ${selected.length} items…`, () =>
+      isTemplate ? deleteWithCopies(ids()) : inChunks(ids(), (chunk) => supabase.from('catalog_items').delete().in('id', chunk)))
   async function copyFrom(source) {
     let data
     try {
       data = await selectAll((q) => (source === 'shared' ? q.eq('section', 'stock_item').is('parent_id', null) : q.eq('section', 'stock_item').eq('parent_id', source)))
     } catch (x) { return setErr(explain(x)) }
     if (!data.length) return setErr('That list has no items to copy.')
-    run(`Copying ${data.length} items here…`, () => insertMany(data.sort((a, b) => a.sort_order - b.sort_order).map((it) => copyOf(it, parentId))))
+    run('Copying items here…', async () => {
+      const n = await addToStyles(data.sort((a, b) => a.sort_order - b.sort_order), [parentId])
+      if (!n) throw new Error('This door style already has all of those items.')
+    })
   }
 
   const featuredCount = (rows || []).filter((r) => r.featured).length
@@ -214,17 +227,18 @@ export default function ItemsManager({ section, title, childSection, back }) {
         {conf.rail && <> “On Home” items are the ones in the Home page scroll bar{featuredCount ? ` (${featuredCount} picked)` : ' — none picked, so the first 24 are shown'}.</>}
       </p>
 
-      {isStockItems && !parentId && (
-        <p className="mb-5 rounded-xl bg-white p-4 text-sm shadow-sm">
-          This is the <b>default list</b>: every <b>new</b> door style starts with a copy of these items, which you can then edit.
-          Changing this list does not change existing door styles — to add an item to them too, tick it and use
-          <b> Copy to door styles</b>. Each door style’s own items are under Stock — Door Styles → Items.
-        </p>
+      {isTemplate && (
+        <div className="mb-5 space-y-1 rounded-xl border-2 border-brand/30 bg-white p-4 text-sm shadow-sm">
+          <p><b>This list controls every door style.</b></p>
+          <p>• <b>Edit</b> an item here and the change is made in every door style too (a door style where you changed that item yourself keeps its own version).</p>
+          <p>• <b>Delete</b> an item here and it is removed from every door style. <b>Add</b> an item and it is added to every door style. New door styles start with this whole list.</p>
+          <p>• To change an item for <b>one</b> door style only (e.g. its photo), go to <Link to="/admin/stock" className="text-brand underline">Stock — Door Styles</Link> and click <b>Edit items</b> on that door style.</p>
+        </div>
       )}
       {isStockItems && parentId && rows && (
         <div className="mb-5 rounded-xl bg-white p-4 text-sm shadow-sm">
           {rows.length
-            ? <>The website shows these {rows.length} items for {styleName || 'this door style'}. Edit any item to change its photo or name here only.</>
+            ? <>These are the {rows.length} items shown for <b>{styleName || 'this door style'}</b>. <b>Edit</b> or <b>Delete</b> here changes {styleName || 'this door style'} only — to change an item for every door style, use <Link to="/admin/stock-items" className="text-brand underline">Stock — Default Items</Link>.</>
             : <>This door style has no items of its own yet, so the website shows the <b>Default Items</b> list. Copy a list here to start from it:</>}
           <CopyFromPicker styles={styles.filter((s) => s.id !== parentId)} onCopy={copyFrom} compact={rows.length > 0} />
         </div>
@@ -249,9 +263,8 @@ export default function ItemsManager({ section, title, childSection, back }) {
           {picked.size > 0 && <>
             <button className="hover:underline" onClick={() => setPicked(new Set())}>Clear</button>
             <span className="font-medium">{picked.size} selected:</span>
-            <button className="btn !px-4 !py-2" onClick={() => setBulk('copy')}>Copy to door styles…</button>
-            <button className="btn-outline !px-4 !py-2" onClick={() => setBulk('move')}>Move to…</button>
-            <button className="text-red-700 hover:underline" onClick={deleteSelected}>Delete selected</button>
+            <button className="btn !px-4 !py-2" onClick={() => setBulk(true)}>{isTemplate ? 'Add to door styles…' : 'Copy to other door styles…'}</button>
+            <button className="text-red-700 hover:underline" onClick={deleteSelected}>{isTemplate ? 'Delete selected (from every door style)' : 'Delete selected'}</button>
           </>}
         </div>
       )}
@@ -283,8 +296,8 @@ export default function ItemsManager({ section, title, childSection, back }) {
                 </p>
                 <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
                   {childSection && (
-                    <Link className="font-medium text-brand hover:underline" to={`/admin/stock/${r.id}`}>
-                      Items {ownCounts[r.id] ? `(${ownCounts[r.id]})` : '(using default list)'}
+                    <Link className="rounded-full bg-brand px-2.5 py-0.5 font-medium text-white hover:bg-brand-dark" to={`/admin/stock/${r.id}`}>
+                      Edit items {ownCounts[r.id] ? `(${ownCounts[r.id]})` : '(using default list)'}
                     </Link>
                   )}
                   <button className="hover:underline" onClick={() => setForm({ ...r, images: r.images || [], specs: r.specs || [] })}>Edit</button>
@@ -302,14 +315,11 @@ export default function ItemsManager({ section, title, childSection, back }) {
         </ul>
       )}
 
-      {form && <ItemForm form={form} setForm={setForm} section={section} list={list} rows={rows || []} onSave={save} err={err} />}
+      {form && <ItemForm form={form} setForm={setForm} section={section} list={list} rows={rows || []} onSave={save} err={err}
+        scope={isTemplate ? 'template' : isStockItems ? styleName || 'this door style' : null} />}
       {bulk && (
-        <TargetPicker
-          multi={bulk === 'copy'} count={selected.length}
-          options={[...(parentId ? [{ id: 'shared', name: 'Default Items list' }] : []), ...styles.filter((s) => s.id !== parentId)]}
-          onCancel={() => setBulk(null)}
-          onDone={(ids) => (bulk === 'copy' ? copyTo(ids) : moveTo(ids[0]))}
-        />
+        <TargetPicker count={selected.length} options={styles.filter((s) => s.id !== parentId)}
+          onCancel={() => setBulk(false)} onDone={copyTo} />
       )}
     </div>
   )
@@ -330,28 +340,27 @@ function CopyFromPicker({ styles, onCopy, compact }) {
   )
 }
 
-/** Pick one (move) or several (copy) door styles. */
-function TargetPicker({ multi, count, options, onCancel, onDone }) {
+/** Pick the door styles to add the selected items to (ones that already have an item are skipped). */
+function TargetPicker({ count, options, onCancel, onDone }) {
   const [ids, setIds] = useState([])
-  const flip = (id) => setIds(multi ? (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]) : [id])
+  const flip = (id) => setIds(ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id])
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 md:p-10" onMouseDown={(e) => e.target === e.currentTarget && onCancel()}>
       <div className="w-full max-w-lg space-y-4 rounded-2xl bg-white p-6 shadow-xl">
-        <h2 className="text-2xl font-semibold">{multi ? `Copy ${count} items to…` : `Move ${count} items to…`}</h2>
-        {multi && (
-          <button type="button" className="text-sm text-brand hover:underline" onClick={() => setIds(ids.length === options.length ? [] : options.map((o) => o.id))}>
-            {ids.length === options.length ? 'Untick all' : 'Tick all door styles'}
-          </button>
-        )}
+        <h2 className="text-2xl font-semibold">Add {count} items to…</h2>
+        <p className="text-sm text-muted">Door styles that already have an item are skipped, so nothing is duplicated.</p>
+        <button type="button" className="text-sm text-brand hover:underline" onClick={() => setIds(ids.length === options.length ? [] : options.map((o) => o.id))}>
+          {ids.length === options.length ? 'Untick all' : 'Tick all door styles'}
+        </button>
         <div className="grid max-h-[50vh] gap-1 overflow-y-auto sm:grid-cols-2">
           {options.map((o) => (
             <label key={o.id} className="flex items-center gap-2 rounded px-2 py-1 text-sm hover:bg-sand/40">
-              <input type={multi ? 'checkbox' : 'radio'} name="target" checked={ids.includes(o.id)} onChange={() => flip(o.id)} /> {o.name}
+              <input type="checkbox" checked={ids.includes(o.id)} onChange={() => flip(o.id)} /> {o.name}
             </label>
           ))}
         </div>
         <div className="flex gap-3">
-          <button className="btn" disabled={!ids.length} onClick={() => onDone(ids)}>{multi ? 'Copy' : 'Move'}</button>
+          <button className="btn" disabled={!ids.length} onClick={() => onDone(ids)}>Add</button>
           <button className="btn-outline" onClick={onCancel}>Cancel</button>
         </div>
       </div>
@@ -359,7 +368,7 @@ function TargetPicker({ multi, count, options, onCancel, onDone }) {
   )
 }
 
-function ItemForm({ form, setForm, section, list, rows, onSave, err }) {
+function ItemForm({ form, setForm, section, list, rows, onSave, err, scope }) {
   const conf = confOf(section)
   const field = catField(section)
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
@@ -374,6 +383,12 @@ function ItemForm({ form, setForm, section, list, rows, onSave, err }) {
           <h2 className="text-2xl font-semibold">{form.id ? 'Edit' : 'New'}</h2>
           <button type="button" onClick={() => setForm(null)} className="text-2xl text-ink/50" aria-label="Close">×</button>
         </div>
+        {scope === 'template' && form.id && (
+          <p className="rounded-lg bg-brand/10 p-3 text-sm">Saving also updates this item in <b>every door style</b> (except door styles where you changed it yourself).</p>
+        )}
+        {scope && scope !== 'template' && (
+          <p className="rounded-lg bg-sand/50 p-3 text-sm">This changes the item for <b>{scope}</b> only.</p>
+        )}
 
         <div><label className="label">{conf.gallery ? 'Main photo (tile)' : 'Photo'}</label><ImageField value={form.image_url} onChange={(v) => setForm({ ...form, image_url: v })} /></div>
 
@@ -440,6 +455,9 @@ function ItemForm({ form, setForm, section, list, rows, onSave, err }) {
         <div className="flex flex-wrap gap-6 text-sm">
           {conf.rail && <label className="flex items-center gap-2"><input type="checkbox" checked={!!form.featured} onChange={(e) => setForm({ ...form, featured: e.target.checked })} /> Show in the Home page scroll bar</label>}
           <label className="flex items-center gap-2"><input type="checkbox" checked={!!form.published} onChange={(e) => setForm({ ...form, published: e.target.checked })} /> Published</label>
+          {scope === 'template' && !form.id && (
+            <label className="flex items-center gap-2"><input type="checkbox" checked={!!form.addToAll} onChange={(e) => setForm({ ...form, addToAll: e.target.checked })} /> Also add to every door style</label>
+          )}
         </div>
 
         {err && <p className="rounded bg-red-50 p-3 text-sm text-red-700">{err}</p>}

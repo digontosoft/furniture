@@ -5,3 +5,5 @@
 
 alter table catalog_items drop constraint if exists catalog_items_section_check;
 alter table catalog_items add constraint catalog_items_section_check check (section ~ '^[a-z][a-z0-9_]*$');
+
+
